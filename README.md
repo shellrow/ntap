@@ -1,2 +1,2 @@
 # ntap
-Cross-platform Network Utilization Statistics tool in Rust
+[WIP]Cross-platform Network Utilization Statistics tool
