@@ -1,0 +1,12 @@
+[package]
+name = "ntap-core"
+version = "0.1.0"
+edition = "2021"
+authors = ["shellrow <shellrow@fortnium.com>"]
+repository = "https://github.com/shellrow/ntap"
+documentation = "https://github.com/shellrow/ntap"
+readme = "README.md"
+license = "MIT"
+description = "Core library for ntap and ntap-desktop"
+
+[dependencies]

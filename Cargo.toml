@@ -1,14 +1,6 @@
-[package]
-name = "ntap"
-version = "0.1.0"
-edition = "2021"
-authors = ["shellrow <shellrow@fortnium.com>"]
-description = "[WIP]Cross-platform Network Utilization Statistics tool"
-repository = "https://github.com/shellrow/ntap"
-documentation = "https://github.com/shellrow/ntap"
-readme = "README.md"
-keywords = ["network","security","cross-platform"]
-categories = ["network-programming"]
-license = "MIT"
-
-[dependencies]
+[workspace]
+resolver = "2"
+members = [
+    "ntap-core",
+    "ntap",
+]
