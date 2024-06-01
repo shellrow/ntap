@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs, path::PathBuf};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "bundle")]
-pub const COUNTRY_BIN: &[u8] = include_bytes!("../../resources/country.bin");
+pub const COUNTRY_BIN: &[u8] = include_bytes!("../resources/country.bin");
 
 pub const COUNTRY_BIN_NAME: &str = "country.bin";
 pub const COUNTRY_R2_URL: &str = "https://r2.ntap.io/country.bin";

@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs, path::PathBuf};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "bundle")]
-pub const OUI_BIN: &[u8] = include_bytes!("../../resources/oui.bin");
+pub const OUI_BIN: &[u8] = include_bytes!("../resources/oui.bin");
 
 pub const OUI_BIN_NAME: &str = "oui.bin";
 pub const OUI_R2_URL: &str = "https://r2.ntap.io/oui.bin";
