@@ -7,7 +7,7 @@ repository = "https://github.com/shellrow/ntap"
 documentation = "https://github.com/shellrow/ntap"
 readme = "README.md"
 license = "MIT"
-description = "ntap DB"
+description = "ntap-db-oui"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
