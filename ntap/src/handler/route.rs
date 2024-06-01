@@ -8,12 +8,13 @@ use netdev::interface::InterfaceType;
 pub fn show_routes() -> Result<(), Box<dyn Error>> {
     let interfaces = netdev::get_interfaces();
 
+    // IPv4 routing table
+    println!("IPv4 Routing Table");
     let mut table = Table::new();
     table
         .load_preset(NOTHING)
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_header(vec!["Destination", "Netmask", "Gateway", "Interface", "Source"]);
-    // IPv4
     for iface in interfaces.clone() {
         if iface.ipv4.len() == 0 {
             continue;
@@ -37,7 +38,7 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
                 ]);
             }
         }else{
-            if iface.if_type == InterfaceType::Loopback {
+            if iface.if_type == InterfaceType::Loopback || iface.ipv4[0].addr == Ipv4Addr::LOCALHOST {
                 table.add_row(vec![
                     Cell::new(&iface.ipv4[0].network()),
                     Cell::new(&iface.ipv4[0].netmask()),
@@ -48,7 +49,15 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
             }
         }    
     }
-    // IPv6
+    println!("{table}");
+
+    // IPv6 routing table
+    println!("IPv6 Routing Table");
+    let mut table = Table::new();
+    table
+        .load_preset(NOTHING)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec!["Destination", "Netmask", "Gateway", "Interface", "Source"]);
     for iface in interfaces {
         if iface.ipv6.len() == 0 {
             continue;
@@ -72,7 +81,7 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
                 ]);
             }
         }else{
-            if iface.if_type == InterfaceType::Loopback {
+            if iface.if_type == InterfaceType::Loopback || iface.ipv6[0].addr == Ipv6Addr::LOCALHOST {
                 table.add_row(vec![
                     Cell::new(&iface.ipv6[0].network()),
                     Cell::new(&iface.ipv6[0].netmask()),
