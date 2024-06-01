@@ -1,0 +1,31 @@
+[package]
+name = "ntap-desktop"
+version = "0.1.0"
+description = "NtapDesktop"
+authors = ["shellrow <shellrow@fortnium.com>"]
+license = "MIT"
+repository = "https://github.com/shellrow/ntap"
+documentation = "https://github.com/shellrow/ntap"
+edition = "2021"
+keywords = ["network", "security", "gui", "cross-platform"]
+categories = ["network-programming"]
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }
+
+[dependencies]
+tauri = { version = "1.5", features = [ "path-all", "dialog-all", "shell-open"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4"
+simplelog = { version = "0.12", features = ["local-offset"] }
+netdev = { version = "0.27", features = ["serde"] }
+nex = { version = "0.12", features = ["serde"] }
+tokio = { version = "1.35" }
+ipstruct = "0.2"
+ntap-core = { path = "../../ntap-core", version = "0.1.0" }
+
+[features]
+# this feature is used for production builds or when `devPath` points to the filesystem
+# DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"]

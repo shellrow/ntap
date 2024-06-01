@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "ntap-core",
     "ntap", 
+    "ntap-desktop/src-tauri",
     "db/ntap-db-ipv4-asn", 
     "db/ntap-db-ipv4-country", 
     "db/ntap-db-ipv6-asn", 

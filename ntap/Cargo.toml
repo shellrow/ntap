@@ -12,4 +12,23 @@ categories = ["network-programming"]
 license = "MIT"
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+simplelog = "0.12"
+netdev = { version = "0.27", features = ["serde"] }
+tokio = { version = "1.35" }
+clap = { version = "4.4", features = ["cargo"] }
+crossterm = "0.27"
+anyhow = "1.0"
+argh = "0.1"
+rand = "0.8"
+color-eyre = "0.6"
+palette = "0.7"
+ratatui = "0.25"
+comfy-table = "7.1"
 ntap-core = { path = "../ntap-core", version = "0.1.0" }
+
+[target.'cfg(windows)'.dependencies]
+indicatif = "0.16"
+inquire = "0.6"
