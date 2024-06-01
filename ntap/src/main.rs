@@ -1,3 +1,3 @@
 fn main() {
-    println!("WIP");
+    ntap_core::load_db();
 }

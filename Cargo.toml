@@ -2,5 +2,14 @@
 resolver = "2"
 members = [
     "ntap-core",
-    "ntap",
+    "ntap", 
+    "db/ntap-db-ipv4-asn", 
+    "db/ntap-db-ipv4-country", 
+    "db/ntap-db-ipv6-asn", 
+    "db/ntap-db-ipv6-country", 
+    "db/ntap-db-as", 
+    "db/ntap-db-country", 
+    "db/ntap-db-tcp-service", 
+    "db/ntap-db-udp-service", 
+    "db/ntap-db-oui",
 ]
