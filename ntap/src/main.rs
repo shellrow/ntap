@@ -19,9 +19,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             handler::monitor::monitor(&args)
         },
         AppCommands::Interfaces => handler::interface::show_interfaces(),
-        AppCommands::Interface => Ok(()),
-        AppCommands::Route => Ok(()),
-        AppCommands::Socket => Ok(()),
+        AppCommands::Interface => handler::interface::show_default_interface(),
+        AppCommands::Route => handler::route::show_routes(),
+        AppCommands::Socket => handler::socket::show_socket_info(),
         AppCommands::Update => Ok(()),
     }
 }
