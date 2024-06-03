@@ -1,2 +1,2 @@
 # ntap
-Cross-platform Network Utilization Statistics tool
+Real-time network utilization monitoring tool
