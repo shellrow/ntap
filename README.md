@@ -1,2 +1,2 @@
 # ntap
-[WIP]Cross-platform Network Utilization Statistics tool
+Cross-platform network utilization statistics tool
