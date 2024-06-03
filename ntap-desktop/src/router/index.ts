@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Overview from '../components/Overview.vue';
-import Packet from '../components/Packet.vue';
 import RemoteAddress from '../components/RemoteAddress.vue';
 import Socket from '../components/Socket.vue';
 import Process from '../components/Process.vue';
@@ -15,11 +14,6 @@ const routes = [
     path: '/overview',
     name: 'Overview2',
     component: Overview,
-  },
-  {
-    path: '/packet',
-    name: 'Packet',
-    component: Packet,
   },
   {
     path: '/remote',
