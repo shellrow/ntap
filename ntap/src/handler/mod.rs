@@ -9,7 +9,6 @@ pub enum AppCommands {
     Interface,
     Route,
     Socket,
-    Update,
 }
 
 impl AppCommands {
@@ -20,7 +19,6 @@ impl AppCommands {
             "interface" => AppCommands::Interface,
             "route" => AppCommands::Route,
             "socket" => AppCommands::Socket,
-            "update" => AppCommands::Update,
             _ => AppCommands::Monitor
         }
     }
