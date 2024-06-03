@@ -22,7 +22,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         AppCommands::Interface => handler::interface::show_default_interface(),
         AppCommands::Route => handler::route::show_routes(),
         AppCommands::Socket => handler::socket::show_socket_info(),
-        AppCommands::Update => Ok(()),
     }
 }
 
@@ -44,17 +43,9 @@ fn parse_args() -> ArgMatches {
                 .long("enhanced_graphics")
                 .num_args(0),
         )
-        // Sub-command for update db files
-        .subcommand(
-            Command::new("update")
-                .about("Check update. ntap update --help for more information")
-                .arg(
-                    Arg::new("db")
-                        .help("Update the database files")
-                        .long("db")
-                        .required(false)
-                        .num_args(0),
-                ),
+        // Sub-command for monitor mode. This is the default mode of ntap
+        .subcommand(Command::new("monitor")
+            .about("Enter monitor mode. Monitor mode continuously displays live network usage statistics.")
         )
         // Sub-command for show active TCP connections and the TCP and UDP ports on which is listening
         .subcommand(
