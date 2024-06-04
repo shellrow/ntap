@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { invoke } from '@tauri-apps/api/tauri';
-//import { listen } from '@tauri-apps/api/event';
 import { KVItem } from '../types/common';
 import { ProcessDisplayInfo } from '../types/network';
 import { WindowUtil } from '../util/window';
