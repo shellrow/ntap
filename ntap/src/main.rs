@@ -22,6 +22,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         AppCommands::Interface => handler::interface::show_default_interface(),
         AppCommands::Route => handler::route::show_routes(),
         AppCommands::Socket => handler::socket::show_socket_info(),
+        AppCommands::IpInfo => handler::ip_info::show_public_ip_info(),
     }
 }
 
@@ -71,6 +72,10 @@ fn parse_args() -> ArgMatches {
         // Sub-command for show IP routing table
         .subcommand(Command::new("route")
             .about("Show IP routing table")
+        )
+        // Sub-command for show public IP info
+        .subcommand(Command::new("ipinfo")
+            .about("Show public IP info")
         )
         ;
     app.get_matches()
