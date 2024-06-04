@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import { invoke } from '@tauri-apps/api/tauri';
-//import { listen } from '@tauri-apps/api/event';
 import { PrimeIcons } from 'primevue/api';
 import { setRoutine } from '../util/routine';
 import { Overview, ServiceDisplayInfo, IpInfo, NetworkInterface, IpInfoDisplayData } from '../types/network';
