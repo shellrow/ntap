@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { invoke } from '@tauri-apps/api/tauri';
-//import { listen } from '@tauri-apps/api/event';
 import { KVItem, OptionItem } from '../types/common';
 import { SocketDisplayInfo, SocketInfoOption } from '../types/network';
 import { setRoutine } from '../util/routine';
