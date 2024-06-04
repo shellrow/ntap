@@ -22,6 +22,7 @@ const ipinfo = ref<IpInfo>();
 const ipv4info = ref<IpInfo>();
 const networkInterface = ref<NetworkInterface>();
 const isLoading = ref(false);
+const tickRate = ref(1000);
 const showPrivateIpv4 = ref(false);
 const privateIpv4VisibleIcon = ref(PrimeIcons.EYE_SLASH);
 const showPrivateIpv6 = ref(false);
@@ -51,13 +52,40 @@ const ipInfoDisplayData = reactive<IpInfoDisplayData>(
 );
 
 const routine = setRoutine({
-  interval: 1000,
+  interval: tickRate.value,
   callback: () => { 
         if (autoUpdate.value) {
             GetOverview(); 
         }
     }
 });
+
+const systemRoutine = setRoutine({
+  interval: 1000,
+  callback: () => { 
+        getAppConfig();
+    }
+});
+
+const getAppConfig = async () => {
+    tickRate.value = localStorage.getItem('tick_rate') ? parseInt(localStorage.getItem('tickRate')!) : 1000;
+}
+
+const setDefaultOptions = () => {
+    showPrivateIpv4.value = localStorage.getItem('hide_private_ip_info') ? localStorage.getItem('hide_private_ip_info') === 'false' : false;
+    showPrivateIpv6.value = localStorage.getItem('hide_private_ip_info') ? localStorage.getItem('hide_private_ip_info') === 'false' : false;
+    showPublicIpv4.value = localStorage.getItem('hide_public_ip_info') ? localStorage.getItem('hide_public_ip_info') === 'false' : false;
+    showPublicIpv6.value = localStorage.getItem('hide_public_ip_info') ? localStorage.getItem('hide_public_ip_info') === 'false' : false;
+    privateIpv4VisibleIcon.value = showPrivateIpv4.value ? PrimeIcons.EYE : PrimeIcons.EYE_SLASH;
+    privateIpv6VisibleIcon.value = showPrivateIpv6.value ? PrimeIcons.EYE : PrimeIcons.EYE_SLASH;
+    publicIpv4VisibleIcon.value = showPublicIpv4.value ? PrimeIcons.EYE : PrimeIcons.EYE_SLASH;
+    publicIpv6VisibleIcon.value = showPublicIpv6.value ? PrimeIcons.EYE : PrimeIcons.EYE_SLASH;
+    if (localStorage.getItem('show_bandwidth') === 'true') {
+        trafficDisplayType.value = 'Bandwidth';
+    }else{
+        trafficDisplayType.value = 'Total';
+    }
+}
 
 const GetOverview = async() => {
     const result = await invoke<Overview>('get_overview');
@@ -226,12 +254,16 @@ const UpdateAll = () => {
 }
 
 onMounted(() => {
+    getAppConfig();
+    setDefaultOptions();
     UpdateAll();
     routine.start();
+    systemRoutine.start();
 });
 
 onUnmounted(() => {
     routine.stop();
+    systemRoutine.stop();
 });
 
 </script>

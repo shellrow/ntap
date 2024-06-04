@@ -9,11 +9,13 @@ import { AppInfo } from '../types/common';
 import AboutDialog from '../components/AboutDialog.vue';
 import ConfigDialog from '../components/ConfigDialog.vue';
 import { DownloadProgress } from '../types/network';
+import { AppConfig } from '../types/common';
+import { setRoutine } from '../util/routine';
 
 const route = useRoute();
 const innerWidth = ref(window.innerWidth);
 const innerHeight = ref(window.innerHeight);
-
+const appConfig: AppConfig = reactive(new AppConfig());
 const DARK_THEME_NAME = 'lara-dark-teal';
 const LIGHT_THEME_NAME = 'lara-light-teal';
 const currentTheme = ref(DARK_THEME_NAME);
@@ -62,6 +64,38 @@ if (localStorage.theme === DARK_THEME_NAME) {
     currentThemeIcon.value = PrimeIcons.SUN;
     currentMode.value = true;
 }
+
+const getAppConfig = async () => {
+    invoke<AppConfig>('get_app_config').then((res) => {
+        appConfig.logging.level = res.logging.level;
+        appConfig.logging.file_path = res.logging.file_path;
+        appConfig.network.interfaces = res.network.interfaces;
+        appConfig.network.reverse_dns = res.network.reverse_dns;
+        appConfig.network.entry_ttl = res.network.entry_ttl;
+        appConfig.display.top_remote_hosts = res.display.top_remote_hosts;
+        appConfig.display.connection_count = res.display.connection_count;
+        appConfig.display.tick_rate = res.display.tick_rate;
+        appConfig.display.show_bandwidth = res.display.show_bandwidth;
+        appConfig.privacy.hide_private_ip_info = res.privacy.hide_private_ip_info;
+        appConfig.privacy.hide_public_ip_info = res.privacy.hide_public_ip_info;
+
+        localStorage.setItem('tick_rate', appConfig.display.tick_rate.toString());
+        localStorage.setItem('show_bandwidth', appConfig.display.show_bandwidth.toString());
+        localStorage.setItem('hide_private_ip_info', appConfig.privacy.hide_private_ip_info.toString());
+        localStorage.setItem('hide_public_ip_info', appConfig.privacy.hide_public_ip_info.toString());
+    }).catch((err) => {
+        console.log(err);
+    }).finally(() => {
+        
+    });
+}
+
+const systemRoutine = setRoutine({
+  interval: 10000,
+  callback: () => { 
+        getAppConfig();
+    }
+});
 
 const changeMode = () => {
     let prevTheme = LIGHT_THEME_NAME;
@@ -210,10 +244,12 @@ onMounted(() => {
     window.addEventListener('resize', checkWindowSize);
     getAppInfo();
     initApp();
+    systemRoutine.start();
 });
 
 onUnmounted(() => {
     window.removeEventListener('resize', checkWindowSize);
+    systemRoutine.stop();
 });
 </script>
 
