@@ -3,6 +3,7 @@ import Overview from '../components/Overview.vue';
 import RemoteAddress from '../components/RemoteAddress.vue';
 import Socket from '../components/Socket.vue';
 import Process from '../components/Process.vue';
+import Interface from '../components/Interface.vue';
 
 const routes = [
   {
@@ -29,6 +30,11 @@ const routes = [
     path: '/process',
     name: 'Process',
     component: Process,
+  },
+  {
+    path: '/interface',
+    name: 'Interface',
+    component: Interface,
   },
 ];
 
