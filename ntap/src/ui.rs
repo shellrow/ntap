@@ -235,7 +235,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
                 };
                 Row::new(vec![
                     conn.protocol.as_str().to_string(),
-                    format!("{}:{}", conn.interface_name, conn.local_port.to_string()),
+                    format!("{}:{}", conn.local_ip_addr.to_string(), conn.local_port.to_string()),
                     format!("{}:{}", remote_ip_string, remote_port_string),
                     ingress_traffic,
                     egress_traffic,
@@ -246,7 +246,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
             .collect::<Vec<Row>>();
         let widths = [
             Constraint::Length(8),
-            Constraint::Length(20),
+            Constraint::Length(44),
             Constraint::Length(42),
             Constraint::Length(11),
             Constraint::Length(11),
@@ -374,7 +374,7 @@ fn draw_connection_table(f: &mut Frame, app: &mut App, area: Rect) {
             };
             Row::new(vec![
                 conn.protocol.as_str().to_string(),
-                format!("{}:{}", conn.interface_name, conn.local_port.to_string()),
+                format!("{}:{}", conn.local_ip_addr.to_string(), conn.local_port.to_string()),
                 format!("{}:{}", remote_ip_string, remote_port_string),
                 ingress_traffic,
                 egress_traffic,
@@ -385,7 +385,7 @@ fn draw_connection_table(f: &mut Frame, app: &mut App, area: Rect) {
         .collect::<Vec<Row>>();
     let widths = [
         Constraint::Length(8),
-        Constraint::Length(20),
+        Constraint::Length(44),
         Constraint::Length(42),
         Constraint::Length(11),
         Constraint::Length(11),

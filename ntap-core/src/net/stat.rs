@@ -492,6 +492,7 @@ impl NetStatStrage {
             if let Some(_tcp) = transport.tcp {
                 let socket_connection: SocketConnection = SocketConnection {
                     interface_name: interface_name.clone(),
+                    local_ip_addr: local_ip_addr,
                     local_port: local_port,
                     remote_ip_addr: remote_ip_addr,
                     remote_port: remote_port,
@@ -514,6 +515,7 @@ impl NetStatStrage {
             if let Some(_udp) = transport.udp {
                 let socket_connection: SocketConnection = SocketConnection {
                     interface_name: interface_name,
+                    local_ip_addr: local_ip_addr,
                     local_port: local_port,
                     remote_ip_addr: remote_ip_addr,
                     remote_port: remote_port,
@@ -835,6 +837,7 @@ impl NetStatData {
             if let Some(traffic) = self.connection_map.get(conn) {
                 let socket_traffic_info = SocketDisplayInfo {
                     interface_name: conn.interface_name.clone(),
+                    local_ip_addr: conn.local_ip_addr,
                     local_port: conn.local_port,
                     remote_ip_addr: Some(conn.remote_ip_addr),
                     remote_port: Some(conn.remote_port),
@@ -883,6 +886,7 @@ impl NetStatData {
             if let Some(traffic) = self.connection_map.get(conn) {
                 let socket_traffic_info = SocketDisplayInfo {
                     interface_name: conn.interface_name.clone(),
+                    local_ip_addr: conn.local_ip_addr,
                     local_port: conn.local_port,
                     remote_ip_addr: Some(conn.remote_ip_addr),
                     remote_port: Some(conn.remote_port),

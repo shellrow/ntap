@@ -15,6 +15,7 @@ use std::sync::Arc;
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord)]
 pub struct SocketConnection {
     pub interface_name: String,
+    pub local_ip_addr: IpAddr,
     pub local_port: u16,
     pub remote_ip_addr: IpAddr,
     pub remote_port: u16,
@@ -138,6 +139,7 @@ pub struct SocketInfo {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SocketTrafficInfo {
     pub interface_name: String,
+    pub local_ip_addr: IpAddr,
     pub local_port: u16,
     pub remote_ip_addr: Option<IpAddr>,
     pub remote_port: Option<u16>,
@@ -150,6 +152,7 @@ pub struct SocketTrafficInfo {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SocketDisplayInfo {
     pub interface_name: String,
+    pub local_ip_addr: IpAddr,
     pub local_port: u16,
     pub remote_ip_addr: Option<IpAddr>,
     pub remote_port: Option<u16>,
@@ -163,6 +166,7 @@ impl SocketDisplayInfo {
     pub fn from_socket_traffic_info(socket_traffic_info: &SocketTrafficInfo) -> Self {
         SocketDisplayInfo {
             interface_name: socket_traffic_info.interface_name.clone(),
+            local_ip_addr: socket_traffic_info.local_ip_addr,
             local_port: socket_traffic_info.local_port,
             remote_ip_addr: socket_traffic_info.remote_ip_addr,
             remote_port: socket_traffic_info.remote_port,

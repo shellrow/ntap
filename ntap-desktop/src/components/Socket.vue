@@ -100,8 +100,12 @@ const onRowSelect = (event: DataTableRowSelectEvent) => {
             value: socket_info.interface_name || '',
         },
         {
+            key: 'Local IP Address',
+            value: socket_info.local_ip_addr || '',
+        },
+        {
             key: 'Local Port',
-            value: socket_info.local_port?.toString() || '',
+            value: socket_info.local_port.toString() || '',
         },
         {
             key: 'Remote IP Address',
@@ -181,13 +185,11 @@ onUnmounted(() => {
         </template>
         <template #content>
             <DataTable :value="tableData" v-model:selection="selectedHost" :virtualScrollerOptions="{ itemSize: 20 }" selectionMode="single" :dataKey="generateRowKey" @rowSelect="onRowSelect" @rowUnselect="onRowUnselect" size="small" scrollable :scrollHeight="(windowUtil.windowSize.innerHeight-200).toString() + 'px'" tableStyle="min-width: 30rem">
-                <Column field="interface_name" header="Interface" sortable></Column>
-                <!-- <Column field="local_hostname" header="SRC Host Name"></Column> -->
+                <Column field="protocol" header="Protocol" sortable></Column>
+                <Column field="local_ip_addr" header="Local IP Address" sortable></Column>
                 <Column field="local_port" header="Local Port" sortable></Column>
                 <Column field="remote_ip_addr" header="Remote IP Address" sortable></Column>
-                <!-- <Column field="remote_hostname" header="DST Host Name"></Column> -->
                 <Column field="remote_port" header="Remote Port" sortable></Column>
-                <Column field="protocol" header="Protocol" sortable></Column>
                 <div v-if="trafficDisplayType == 'Bandwidth'">
                     <Column field="traffic.formatted_egress_bytes_per_sec" header="Bytes Sent" sortable></Column>
                     <Column field="traffic.formatted_ingress_bytes_per_sec" header="Bytes Recv" sortable></Column>

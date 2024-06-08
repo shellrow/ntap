@@ -389,6 +389,7 @@ export interface SocketTrafficInfo {
 
 export interface SocketDisplayInfo {
     interface_name: string,
+    local_ip_addr: string,
     local_port: number,
     remote_ip_addr: string | null,
     remote_port: number | null,
