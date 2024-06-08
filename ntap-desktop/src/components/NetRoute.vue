@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { invoke } from '@tauri-apps/api/tauri';
-import { KVItem } from '../types/common';
 import { NetRoute } from '../types/network';
 import { WindowUtil } from '../util/window';
 import { setRoutine } from '../util/routine';
@@ -9,10 +8,8 @@ import { DataTableRowSelectEvent } from 'primevue/datatable';
 import { SelectButtonChangeEvent } from 'primevue/selectbutton';
 
 const tableData = ref<NetRoute[]>([]);
-const selectedRouteKv = ref<KVItem[]>([]);
 const isLoading = ref(false);
 const selectedHost = ref<any>();
-const dialogVisible = ref(false);
 const windowUtil = new WindowUtil();
 const autoUpdate = ref(true);
 const updateType = ref('Auto');
@@ -42,15 +39,12 @@ const getRoutes = async () => {
     });
 }
 
-const onRowSelect = (event: DataTableRowSelectEvent) => {
-    const r: NetRoute = event.data;
-    selectedRouteKv.value = [];
-    selectedRouteKv.value.push({key: 'Destination', value: r.destination });
-    dialogVisible.value = true;
+const onRowSelect = (_event: DataTableRowSelectEvent) => {
+
 };
 
 const onRowUnselect = (_event: DataTableRowSelectEvent) => {
-    dialogVisible.value = false;
+
 }
 
 const onUpdateTypeChange = (event: SelectButtonChangeEvent) => {
@@ -108,15 +102,4 @@ onUnmounted(() => {
             </DataTable>
         </template>
     </Card>
-    <Dialog v-model:visible="dialogVisible" :modal="false" :closable="true" header="Detail" :showHeader="true" :breakpoints="{'960px': '75vw', '640px': '100vw'}" :style="{width: '45vw'}">
-        <DataTable :value="selectedRouteKv"  scrollable scrollHeight="70vh" tableStyle="min-width: 50rem">
-                <Column field="key" header="" ></Column>
-                <Column field="value" header="" ></Column>
-            </DataTable>
-        <template #footer>
-            <div class="flex border-top-1 pt-5 surface-border justify-content-end align-items-center">
-                <Button @click="dialogVisible = false" icon="pi pi-check" label="OK" class="m-0"></Button>
-            </div>
-        </template>
-    </Dialog>
 </template>
