@@ -250,3 +250,8 @@ pub async fn get_config_dir() -> String {
 pub async fn get_database_config() -> ntap_core::config::DatabaseConfig {
     ntap_core::config::DatabaseConfig::new()
 }
+
+#[tauri::command]
+pub async fn get_routes() -> Vec<crate::route::Route> {
+    crate::route::get_routes()
+}

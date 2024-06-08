@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
-//mod components;
+mod route;
 mod sys;
 mod task;
 mod app;
@@ -10,7 +10,7 @@ mod app;
 use commands::{
     start_background_task, get_deps_map, download_dep, run_dep_installer, get_default_interface, get_netstat, get_overview, get_process_info, get_remote_hosts,
     get_self_ip_info, get_self_ipv4_info, start_packet_capture, get_app_info, get_app_config, 
-    save_app_config, get_interfaces, get_config_dir,get_database_config
+    save_app_config, get_interfaces, get_config_dir, get_database_config, get_routes
 };
 use ntap_core::net::stat::{NetStatData, NetStatStrage};
 use std::sync::{Arc, Mutex};
@@ -42,7 +42,8 @@ fn main() {
             save_app_config,
             get_interfaces,
             get_config_dir,
-            get_database_config
+            get_database_config,
+            get_routes
         ])
         .setup(|app| {
             let app_handle = app.handle();

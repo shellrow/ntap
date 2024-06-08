@@ -413,9 +413,17 @@ export interface IpInfoDisplayData {
 export type DownloadProgress = ContentLength | Downloaded;
 
 export interface ContentLength {
-  ContentLength: number;
+    ContentLength: number;
 }
 
 export interface Downloaded {
-  Downloaded: number;
+    Downloaded: number;
+}
+
+export interface NetRoute {
+    interface_name: string,
+    source: string,
+    destination: string,
+    netmask: string,
+    gateway: string,
 }

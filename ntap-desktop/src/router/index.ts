@@ -4,6 +4,7 @@ import RemoteAddress from '../components/RemoteAddress.vue';
 import Socket from '../components/Socket.vue';
 import Process from '../components/Process.vue';
 import Interface from '../components/Interface.vue';
+import NetRoute from '../components/NetRoute.vue';
 
 const routes = [
   {
@@ -35,6 +36,11 @@ const routes = [
     path: '/interface',
     name: 'Interface',
     component: Interface,
+  },
+  {
+    path: '/netroute',
+    name: 'Route',
+    component: NetRoute,
   },
 ];
 

@@ -14,7 +14,7 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
     table
         .load_preset(NOTHING)
         .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["Destination", "Netmask", "Gateway", "Interface", "Source"]);
+        .set_header(vec!["Interface", "Source", "Destination", "Netmask", "Gateway"]);
     for iface in interfaces.clone() {
         if iface.ipv4.len() == 0 {
             continue;
@@ -23,30 +23,30 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
             for ipv4 in &iface.ipv4 {
                 if iface.default {
                     table.add_row(vec![
-                        Cell::new("default"),
-                        Cell::new(Ipv4Addr::UNSPECIFIED),
-                        Cell::new(gateway.ipv4[0]),
-                        Cell::new(&iface.name),
+                        Cell::new(format!("{} (default)", &iface.name)),
                         Cell::new(&ipv4.addr),
+                        Cell::new(Ipv4Addr::UNSPECIFIED),
+                        Cell::new(&ipv4.netmask()),
+                        Cell::new(gateway.ipv4[0]),
                     ]);
                 }else{
                     table.add_row(vec![
+                        Cell::new(&iface.name),
+                        Cell::new(&ipv4.addr),
                         Cell::new(&ipv4.network()),
                         Cell::new(&ipv4.netmask()),
                         Cell::new(gateway.ipv4[0]),
-                        Cell::new(&iface.name),
-                        Cell::new(&ipv4.addr),
                     ]);
                 }
             }
         }else{
             if iface.if_type == InterfaceType::Loopback || iface.ipv4[0].addr == Ipv4Addr::LOCALHOST {
                 table.add_row(vec![
+                    Cell::new(iface.name),
+                    Cell::new(&iface.ipv4[0].addr),
                     Cell::new(&iface.ipv4[0].network()),
                     Cell::new(&iface.ipv4[0].netmask()),
                     Cell::new(""),
-                    Cell::new(iface.name),
-                    Cell::new(&iface.ipv4[0].addr),
                 ]);
             }
         }    
@@ -59,7 +59,7 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
     table
         .load_preset(NOTHING)
         .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["Destination", "Netmask", "Gateway", "Interface", "Source"]);
+        .set_header(vec!["Interface", "Source", "Destination", "Netmask", "Gateway"]);
     for iface in interfaces {
         if iface.ipv6.len() == 0 {
             continue;
@@ -68,30 +68,30 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
             for ipv6 in &iface.ipv6 {
                 if iface.default {
                     table.add_row(vec![
-                        Cell::new("default"),
-                        Cell::new(Ipv6Addr::UNSPECIFIED),
-                        Cell::new(gateway.ipv6[0]),
-                        Cell::new(&iface.name),
+                        Cell::new(format!("{} (default)", &iface.name)),
                         Cell::new(&ipv6.addr),
+                        Cell::new(Ipv6Addr::UNSPECIFIED),
+                        Cell::new(&ipv6.netmask()),
+                        Cell::new(gateway.ipv6[0]),
                     ]);
                 }else{
                     table.add_row(vec![
+                        Cell::new(&iface.name),
+                        Cell::new(&ipv6.addr),
                         Cell::new(&ipv6.network()),
                         Cell::new(&ipv6.netmask()),
                         Cell::new(gateway.ipv6[0]),
-                        Cell::new(&iface.name),
-                        Cell::new(&ipv6.addr),
                     ]);
                 }
             }
         }else{
             if iface.if_type == InterfaceType::Loopback || iface.ipv6[0].addr == Ipv6Addr::LOCALHOST {
                 table.add_row(vec![
+                    Cell::new(iface.name),
+                    Cell::new(&iface.ipv6[0].addr),
                     Cell::new(&iface.ipv6[0].network()),
                     Cell::new(&iface.ipv6[0].netmask()),
                     Cell::new(""),
-                    Cell::new(iface.name),
-                    Cell::new(&iface.ipv6[0].addr),
                 ]);
             }
         }
