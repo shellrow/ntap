@@ -14,8 +14,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 log = "0.4"
 simplelog = "0.12"
-netdev = { version = "0.27", features = ["serde"] }
-nex = { version = "0.12", features = ["serde"] }
+netdev = { version = "0.28", features = ["serde"] }
+nex = { version = "0.13", features = ["serde"] }
 tokio = { version = "1.35" }
 hickory-resolver = { version = "0.24" }
 futures = {version = "0.3"}
