@@ -246,8 +246,8 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
             .collect::<Vec<Row>>();
         let widths = [
             Constraint::Length(8),
-            Constraint::Length(44),
-            Constraint::Length(42),
+            Constraint::Length(46),
+            Constraint::Length(46),
             Constraint::Length(11),
             Constraint::Length(11),
             Constraint::Length(5),
@@ -385,8 +385,8 @@ fn draw_connection_table(f: &mut Frame, app: &mut App, area: Rect) {
         .collect::<Vec<Row>>();
     let widths = [
         Constraint::Length(8),
-        Constraint::Length(44),
-        Constraint::Length(42),
+        Constraint::Length(46),
+        Constraint::Length(46),
         Constraint::Length(11),
         Constraint::Length(11),
         Constraint::Length(5),
