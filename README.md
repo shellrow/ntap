@@ -18,13 +18,36 @@ It provides comprehensive insights into your network's activity, enabling users 
 
 ### CLI: ntap
 
-#### Pre-built binaries
-Download the pre-built binaries for your platform from the [releases page](https://github.com/shellrow/ntap/releases).
+### Install prebuilt binaries via shell script
 
-#### Cargo
-If you have Rust installed, you can install ntap directly using cargo:
-```bash
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/shellrow/ntap/releases/latest/download/ntap-installer.sh | sh
+```
+
+### Install prebuilt binaries via powershell script
+
+```sh
+irm https://github.com/shellrow/ntap/releases/latest/download/ntap-installer.ps1 | iex
+```
+
+### Install prebuilt binaries via Homebrew
+
+```sh
+brew install shellrow/tap-ntap/ntap
+```
+
+### From Releases
+You can download archives of precompiled binaries from the [releases](https://github.com/shellrow/ntap/releases) 
+
+### Using Cargo
+
+```sh
 cargo install ntap
+```
+
+Or you can use [binstall](https://github.com/cargo-bins/cargo-binstall) for install ntap from github release.
+```sh
+cargo binstall ntap
 ```
 
 #### Build from source
