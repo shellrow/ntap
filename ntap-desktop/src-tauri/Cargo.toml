@@ -9,6 +9,7 @@ documentation = "https://github.com/shellrow/ntap"
 edition = "2021"
 keywords = ["network", "security", "gui", "cross-platform"]
 categories = ["network-programming"]
+publish = false
 
 [build-dependencies]
 tauri-build = { version = "1.5", features = [] }
