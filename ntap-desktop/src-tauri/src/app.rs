@@ -2,9 +2,9 @@ use serde::{Deserialize, Serialize};
 
 // env
 pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
-pub const APP_DESCRIPTION: &str = "Cross-platform Network Utilization Statistics tool";
+pub const APP_DESCRIPTION: &str = "Real-time network utilization monitoring tool";
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const APP_RELEASE_DATE: &str = "2024-05-02";
+pub const APP_RELEASE_DATE: &str = "2024-06-09";
 pub const APP_REPOSITORY : &str = env!("CARGO_PKG_REPOSITORY");
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
