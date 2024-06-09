@@ -14,6 +14,19 @@ members = [
     "db/ntap-db-udp-service", 
     "db/ntap-db-oui",
 ]
+default-members = [
+    "ntap-core",
+    "ntap", 
+    "db/ntap-db-ipv4-asn", 
+    "db/ntap-db-ipv4-country", 
+    "db/ntap-db-ipv6-asn", 
+    "db/ntap-db-ipv6-country", 
+    "db/ntap-db-as", 
+    "db/ntap-db-country", 
+    "db/ntap-db-tcp-service", 
+    "db/ntap-db-udp-service", 
+    "db/ntap-db-oui",
+]
 
 # Config for 'cargo dist'
 [workspace.metadata.dist]
