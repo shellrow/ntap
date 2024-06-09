@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "ntap-core",
     "ntap", 
-    "ntap-desktop/src-tauri",
+    #"ntap-desktop/src-tauri",
     "db/ntap-db-ipv4-asn", 
     "db/ntap-db-ipv4-country", 
     "db/ntap-db-ipv6-asn", 
@@ -14,19 +14,8 @@ members = [
     "db/ntap-db-udp-service", 
     "db/ntap-db-oui",
 ]
-default-members = [
-    "ntap-core",
-    "ntap", 
-    "db/ntap-db-ipv4-asn", 
-    "db/ntap-db-ipv4-country", 
-    "db/ntap-db-ipv6-asn", 
-    "db/ntap-db-ipv6-country", 
-    "db/ntap-db-as", 
-    "db/ntap-db-country", 
-    "db/ntap-db-tcp-service", 
-    "db/ntap-db-udp-service", 
-    "db/ntap-db-oui",
-]
+# for GitHub CI exclude tauri project
+exclude = ["ntap-desktop/src-tauri"]
 
 # Config for 'cargo dist'
 [workspace.metadata.dist]
