@@ -11,6 +11,9 @@ keywords = ["network", "security", "gui", "cross-platform"]
 categories = ["network-programming"]
 publish = false
 
+[package.metadata.dist]
+dist = false
+
 [build-dependencies]
 tauri-build = { version = "1.5", features = [] }
 
