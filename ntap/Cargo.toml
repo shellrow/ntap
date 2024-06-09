@@ -1,6 +1,6 @@
 [package]
 name = "ntap"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["shellrow <shellrow@fortnium.com>"]
 description = "Real-time network utilization monitoring tool"
@@ -27,7 +27,7 @@ color-eyre = "0.6"
 palette = "0.7"
 ratatui = "0.25"
 comfy-table = "7.1"
-ntap-core = { path = "../ntap-core", version = "0.1.0" }
+ntap-core = { path = "../ntap-core", version = "0.2.0" }
 
 [target.'cfg(windows)'.dependencies]
 indicatif = "0.16"
