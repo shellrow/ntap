@@ -26,7 +26,7 @@ pub fn get_routes() -> Vec<Route> {
                         source: IpAddr::V4(ipv4.addr),
                         destination: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                         netmask: IpAddr::V4(ipv4.netmask()),
-                        gateway: IpAddr::V4(gateway.ipv4[0]),
+                        gateway: IpAddr::V4(*gateway.ipv4.first().unwrap_or(&Ipv4Addr::UNSPECIFIED)),
                     });
                 } else {
                     routes.push(Route {
@@ -34,7 +34,7 @@ pub fn get_routes() -> Vec<Route> {
                         source: IpAddr::V4(ipv4.addr.clone()),
                         destination: IpAddr::V4(ipv4.network()),
                         netmask: IpAddr::V4(ipv4.netmask()),
-                        gateway: IpAddr::V4(gateway.ipv4[0]),
+                        gateway: IpAddr::V4(*gateway.ipv4.first().unwrap_or(&Ipv4Addr::UNSPECIFIED)),
                     });
                 }
             }
@@ -65,7 +65,7 @@ pub fn get_routes() -> Vec<Route> {
                         source: IpAddr::V6(ipv6.addr),
                         destination: IpAddr::V6(Ipv6Addr::UNSPECIFIED),
                         netmask: IpAddr::V6(ipv6.netmask()),
-                        gateway: IpAddr::V6(gateway.ipv6[0]),
+                        gateway: IpAddr::V6(*gateway.ipv6.first().unwrap_or(&Ipv6Addr::UNSPECIFIED)),
                     });
                 } else {
                     routes.push(Route {
@@ -73,7 +73,7 @@ pub fn get_routes() -> Vec<Route> {
                         source: IpAddr::V6(ipv6.addr.clone()),
                         destination: IpAddr::V6(ipv6.network()),
                         netmask: IpAddr::V6(ipv6.netmask()),
-                        gateway: IpAddr::V6(gateway.ipv6[0]),
+                        gateway: IpAddr::V6(*gateway.ipv6.first().unwrap_or(&Ipv6Addr::UNSPECIFIED)),
                     });
                 }
             }
