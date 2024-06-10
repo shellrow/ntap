@@ -21,13 +21,18 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
         }
         if let Some(gateway) = iface.gateway {
             for ipv4 in &iface.ipv4 {
+                let ipv4_gateway = if let Some(gw) = gateway.ipv4.first() {
+                    gw.to_string()
+                } else {
+                    String::new()
+                };
                 if iface.default {
                     table.add_row(vec![
                         Cell::new(format!("{} (default)", &iface.name)),
                         Cell::new(&ipv4.addr),
                         Cell::new(Ipv4Addr::UNSPECIFIED),
                         Cell::new(&ipv4.netmask()),
-                        Cell::new(gateway.ipv4[0]),
+                        Cell::new(ipv4_gateway),
                     ]);
                 }else{
                     table.add_row(vec![
@@ -35,7 +40,7 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
                         Cell::new(&ipv4.addr),
                         Cell::new(&ipv4.network()),
                         Cell::new(&ipv4.netmask()),
-                        Cell::new(gateway.ipv4[0]),
+                        Cell::new(ipv4_gateway),
                     ]);
                 }
             }
@@ -66,13 +71,18 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
         }
         if let Some(gateway) = iface.gateway {
             for ipv6 in &iface.ipv6 {
+                let ipv6_gateway = if let Some(gw) = gateway.ipv6.first() {
+                    gw.to_string()
+                } else {
+                    String::new()
+                };
                 if iface.default {
                     table.add_row(vec![
                         Cell::new(format!("{} (default)", &iface.name)),
                         Cell::new(&ipv6.addr),
                         Cell::new(Ipv6Addr::UNSPECIFIED),
                         Cell::new(&ipv6.netmask()),
-                        Cell::new(gateway.ipv6[0]),
+                        Cell::new(ipv6_gateway),
                     ]);
                 }else{
                     table.add_row(vec![
@@ -80,7 +90,7 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
                         Cell::new(&ipv6.addr),
                         Cell::new(&ipv6.network()),
                         Cell::new(&ipv6.netmask()),
-                        Cell::new(gateway.ipv6[0]),
+                        Cell::new(ipv6_gateway),
                     ]);
                 }
             }
