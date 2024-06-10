@@ -1,4 +1,8 @@
-# ntap
+[crates-badge]: https://img.shields.io/crates/v/ntap.svg
+[crates-url]: https://crates.io/crates/ntap
+[license-badge]: https://img.shields.io/crates/l/ntap.svg
+
+# ntap [![Crates.io][crates-badge]][crates-url] ![License][license-badge]
 
 ## Overview
 **ntap** is a real-time network utilization monitoring tool.  
