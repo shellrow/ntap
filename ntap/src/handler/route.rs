@@ -21,7 +21,7 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
         }
         if let Some(gateway) = iface.gateway {
             for ipv4 in &iface.ipv4 {
-                let ipv4_gateway = if let Some(gw) = gateway.ipv4.get(0) {
+                let ipv4_gateway = if let Some(gw) = gateway.ipv4.first() {
                     gw.to_string()
                 } else {
                     String::new()
@@ -71,7 +71,7 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
         }
         if let Some(gateway) = iface.gateway {
             for ipv6 in &iface.ipv6 {
-                let ipv6_gateway = if let Some(gw) = gateway.ipv6.get(0) {
+                let ipv6_gateway = if let Some(gw) = gateway.ipv6.first() {
                     gw.to_string()
                 } else {
                     String::new()
