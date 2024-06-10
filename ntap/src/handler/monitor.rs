@@ -53,20 +53,33 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
         log_config_builder.set_time_offset(offset);
     }
     let default_log_config = log_config_builder.build();
-    simplelog::CombinedLogger::init(vec![
-        simplelog::TermLogger::new(
-            simplelog::LevelFilter::Info,
-            default_log_config.clone(),
-            simplelog::TerminalMode::Mixed,
-            simplelog::ColorChoice::Auto,
-        ),
-        simplelog::WriteLogger::new(
-            config.logging.level.to_level_filter(),
-            default_log_config,
-            log_file,
-        ),
-    ])?;
 
+    // Init logger with file and terminal output
+    // debug build: log to terminal and file
+    // release build: log to file only
+    if cfg!(debug_assertions) {
+        simplelog::CombinedLogger::init(vec![
+            simplelog::TermLogger::new(
+                simplelog::LevelFilter::Info,
+                default_log_config.clone(),
+                simplelog::TerminalMode::Mixed,
+                simplelog::ColorChoice::Auto,
+            ),
+            simplelog::WriteLogger::new(
+                config.logging.level.to_level_filter(),
+                default_log_config,
+                log_file,
+            ),
+        ])?;
+    } else {
+        simplelog::CombinedLogger::init(vec![
+            simplelog::WriteLogger::new(
+                config.logging.level.to_level_filter(),
+                default_log_config,
+                log_file,
+            ),
+        ])?;
+    }
     // Start threads
     let mut threads: Vec<thread::JoinHandle<()>> = vec![];
 
