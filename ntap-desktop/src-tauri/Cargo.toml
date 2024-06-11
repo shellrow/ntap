@@ -27,7 +27,7 @@ netdev = { version = "0.28", features = ["serde"] }
 nex = { version = "0.15", features = ["serde"] }
 tokio = { version = "1.35" }
 ipstruct = "0.2"
-ntap-core = { path = "../../ntap-core", version = "0.2.0" }
+ntap-core = { path = "../../ntap-core", version = "0.3.0" }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
