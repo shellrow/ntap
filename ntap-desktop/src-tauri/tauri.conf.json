@@ -7,8 +7,8 @@
     "withGlobalTauri": false
   },
   "package": {
-    "productName": "ntap-desktop",
-    "version": "0.2.0"
+    "productName": "Ntap Desktop",
+    "version": "0.3.0"
   },
   "tauri": {
     "allowlist": {
@@ -48,7 +48,7 @@
       {
         "fullscreen": false,
         "resizable": true,
-        "title": "ntap-desktop",
+        "title": "Ntap Desktop",
         "width": 1100,
         "height": 700
       }
