@@ -136,6 +136,15 @@ chmod-bpf check
 sudo chmod-bpf install
 ```
 
+#### macOS Security
+After installing Ntap Desktop on macOS, you may encounter a security warning that prevents the app from opening, stating that it is from an unidentified developer. This is a common macOS security measure for apps downloaded outside of the App Store.
+
+To resolve this issue and open Ntap Desktop, you can remove the security attributes that macOS assigns to the application using the following command in the Terminal:
+
+```sh
+xattr -rc "/Applications/Ntap Desktop.app"
+```
+
 ### Post-Install (Windows)
 - Ensure that you have [Npcap](https://npcap.com/#download) installed, which is necessary for packet capturing on Windows
 - Download and install Npcap from [Npcap](https://npcap.com/#download). Choose the "Install Npcap in WinPcap API-compatible Mode" during installation.
