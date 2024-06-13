@@ -1,5 +1,5 @@
 <div align="center">
-    <img src="resources/ntap-logo-256x256.png" alt="ntap - Real-time network utilization monitoring tool"><br>
+    <img src="resources/ntap-logo-128x128.png" alt="ntap - Real-time network utilization monitoring tool"><br>
     <h1>ntap</h1>
     <p>
         <strong>Real-time network utilization monitoring tool.</strong>
