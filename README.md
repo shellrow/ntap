@@ -1,4 +1,10 @@
-# ntap
+<div align="center">
+    <img src="resources/ntap-logo-256x256.png" alt="ntap - Real-time network utilization monitoring tool"><br>
+    <h1>ntap</h1>
+    <p>
+        <strong>Real-time network utilization monitoring tool.</strong>
+    </p>
+</div>
 
 ## Overview
 **ntap** is a real-time network utilization monitoring tool.  
@@ -15,7 +21,8 @@ It provides comprehensive insights into your network's activity, enabling users 
 
 ## Installation
 
-### CLI: ntap
+## CLI: ntap
+![image](resources/ntap-ss-overview.png)  
 
 ### Install prebuilt binaries via shell script
 
@@ -61,7 +68,8 @@ cargo build --release
 ./target/release/ntap
 ```
 
-### Desktop Application: ntap-desktop
+## Desktop Application: ntap-desktop
+![image](resources/ntap-desktop-ss-overview.png)
 
 #### Using Installer
 Download the installer for your platform from the [releases page](https://github.com/shellrow/ntap/releases).
