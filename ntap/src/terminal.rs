@@ -10,7 +10,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ntap_core::{config::AppConfig, net::stat::NetStatStrage};
+use crate::{config::AppConfig, net::stat::NetStatStrage};
 use ratatui::prelude::*;
 use std::sync::Arc;
 

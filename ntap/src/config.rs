@@ -1,6 +1,8 @@
+#![allow(unused)]
+
 use crate::sys;
-use crate::log::LogLevel;
-use crate::log::DEFAULT_LOG_FILE_PATH;
+use crate::thread_log::LogLevel;
+use crate::thread_log::DEFAULT_LOG_FILE_PATH;
 use crate::thread_log;
 use serde::{Deserialize, Serialize};
 pub const NTAP_CONFIG_FILE_NAME: &str = "ntap-config.json";

@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "ntap-core",
     "ntap", 
     "db/ntap-db-ipv4-asn", 
     "db/ntap-db-ipv4-country", 

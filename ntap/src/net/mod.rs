@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 pub mod dns;
 pub mod host;
 pub mod http;

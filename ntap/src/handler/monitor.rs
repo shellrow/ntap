@@ -1,6 +1,6 @@
-use ntap_core::config::AppConfig;
-use ntap_core::net::stat::NetStatStrage;
-use ntap_core::thread_log;
+use crate::config::AppConfig;
+use crate::net::stat::NetStatStrage;
+use crate::thread_log;
 use std::error::Error;
 use std::fs::File;
 use std::path::Path;
@@ -11,7 +11,7 @@ use clap::ArgMatches;
 
 pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     // Check .ntap directory
-    match ntap_core::sys::get_config_dir_path() {
+    match crate::sys::get_config_dir_path() {
         Some(_config_dir) => {}
         None => {
             eprintln!("Error: Could not get config directory path");
@@ -40,7 +40,7 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
         // Convert to PathBuf
         Path::new(&file_path).to_path_buf()
     } else {
-        ntap_core::sys::get_user_file_path(ntap_core::log::DEFAULT_LOG_FILE_PATH).unwrap()
+        crate::sys::get_user_file_path(crate::thread_log::DEFAULT_LOG_FILE_PATH).unwrap()
     };
     let log_file: File = if log_file_path.exists() {
         File::options().write(true).open(&log_file_path)?
@@ -49,7 +49,7 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     };
     let mut log_config_builder = simplelog::ConfigBuilder::default();
     log_config_builder.set_time_format_rfc3339();
-    if let Some(offset) = ntap_core::time::get_local_offset() {
+    if let Some(offset) = crate::time::get_local_offset() {
         log_config_builder.set_time_offset(offset);
     }
     let default_log_config = log_config_builder.build();
@@ -87,14 +87,14 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let mut netstat_strage_socket = Arc::clone(&netstat_strage);
     let mut netstat_strage_ui = Arc::clone(&netstat_strage);
 
-    let usable_interfaces = ntap_core::net::interface::get_usable_interfaces();
+    let usable_interfaces = crate::net::interface::get_usable_interfaces();
     let mut pcap_thread_index = 0;
     let pcap_handlers = usable_interfaces
         .iter()
         .map(|iface| {
             let mut netstat_strage_pcap = Arc::clone(&netstat_strage);
             let iface = iface.clone();
-            let pcap_option = ntap_core::net::pcap::PacketCaptureOptions::from_interface(&iface);
+            let pcap_option = crate::net::pcap::PacketCaptureOptions::from_interface(&iface);
             let thread_name = format!("pcap-thread-{}", iface.name.clone());
             let pcap_thread =
                 thread::Builder::new().name(thread_name.clone());
@@ -102,7 +102,7 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
                 if pcap_thread_index == 0 {
                     netstat_strage_pcap.load_ipdb();
                 }
-                ntap_core::net::pcap::start_background_capture(
+                crate::net::pcap::start_background_capture(
                     pcap_option,
                     &mut netstat_strage_pcap,
                     iface,
@@ -116,7 +116,7 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
     let socket_handler = thread::spawn(move || {
         thread_log!(info, "start thread socket_info_update");
-        ntap_core::net::socket::start_socket_info_update(&mut netstat_strage_socket);
+        crate::net::socket::start_socket_info_update(&mut netstat_strage_socket);
     });
 
     for pcap_handler in pcap_handlers {
@@ -135,7 +135,7 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
         let mut netstat_strage_dns = Arc::clone(&netstat_strage);
         let dns_handler = thread::spawn(move || {
             thread_log!(info, "start thread dns_map_update");
-            ntap_core::net::dns::start_dns_map_update(&mut netstat_strage_dns);
+            crate::net::dns::start_dns_map_update(&mut netstat_strage_dns);
         });
         threads.push(dns_handler);
     }

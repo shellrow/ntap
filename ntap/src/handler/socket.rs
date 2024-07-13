@@ -2,10 +2,10 @@ use std::error::Error;
 
 use comfy_table::presets::NOTHING;
 use comfy_table::*;
-use ntap_core::net::socket::SocketInfoOption;
+use crate::net::socket::SocketInfoOption;
 
 pub fn show_socket_info() -> Result<(), Box<dyn Error>> {
-    let sockets = ntap_core::net::socket::get_sockets_info(SocketInfoOption::default());
+    let sockets = crate::net::socket::get_sockets_info(SocketInfoOption::default());
     let mut table = Table::new();
     table
         .load_preset(NOTHING)

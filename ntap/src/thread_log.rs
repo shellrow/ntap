@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use serde::{Deserialize, Serialize};
 use std::sync::{Mutex, OnceLock};
 
@@ -10,7 +12,7 @@ pub static LOG_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 #[macro_export]
 macro_rules! thread_log {
     ($log_macro: ident, $($fmt_args:expr),*) => {{
-        let guard = $crate::log::LOG_LOCK.get_or_init(|| std::sync::Mutex::new(()))
+        let guard = $crate::thread_log::LOG_LOCK.get_or_init(|| std::sync::Mutex::new(()))
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         log::$log_macro!($($fmt_args,)*);

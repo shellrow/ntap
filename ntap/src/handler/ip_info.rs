@@ -11,7 +11,7 @@ pub fn show_public_ip_info() -> Result<(), Box<dyn Error>> {
         table
             .load_preset(NOTHING)
             .set_content_arrangement(ContentArrangement::Dynamic);
-        let ipv4_info = ntap_core::net::ip::get_self_ipv4_info().await?;
+        let ipv4_info = crate::net::ip::get_self_ipv4_info().await?;
         if ipv4_info.ip_version != "v4" {
             return Err("Failed to get IPv4 info".into());
         }
@@ -45,7 +45,7 @@ pub fn show_public_ip_info() -> Result<(), Box<dyn Error>> {
         table
             .load_preset(NOTHING)
             .set_content_arrangement(ContentArrangement::Dynamic);
-        let ipv6_info = ntap_core::net::ip::get_self_ip_info().await?;
+        let ipv6_info = crate::net::ip::get_self_ip_info().await?;
         if ipv6_info.ip_version != "v6" {
             return Err("Failed to get IPv6 info".into());
         }

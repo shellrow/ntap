@@ -61,14 +61,14 @@ fn draw_summary(f: &mut Frame, app: &mut App, area: Rect) {
         //.margin(1)
         .split(area);
     let ipv4_addr: String = if let Some(ipv4) =
-        ntap_core::net::interface::get_interface_ipv4(&app.netstat_data.default_interface)
+        crate::net::interface::get_interface_ipv4(&app.netstat_data.default_interface)
     {
         ipv4.to_string()
     } else {
         "".to_string()
     };
     let ipv6_addr: String = if let Some(ipv6) =
-        ntap_core::net::interface::get_interface_local_ipv6(&app.netstat_data.default_interface)
+        crate::net::interface::get_interface_local_ipv6(&app.netstat_data.default_interface)
     {
         ipv6.to_string()
     } else {

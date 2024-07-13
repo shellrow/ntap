@@ -1,6 +1,14 @@
+mod db;
+mod deps;
+mod net;
+mod sys;
+mod config;
+mod thread_log;
+mod notification;
+mod process;
+mod time;
 mod app;
 mod handler;
-mod sys;
 mod terminal;
 mod ui;
 
