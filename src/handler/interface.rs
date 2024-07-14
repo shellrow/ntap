@@ -10,8 +10,7 @@ pub fn show_interfaces() -> Result<(), Box<dyn Error>> {
     let mut table = Table::new();
     table
         .load_preset(NOTHING)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["#", "Key", "Value"]);
+        .set_content_arrangement(ContentArrangement::Dynamic);
 
     for iface in interfaces {
         table.add_row(vec![
@@ -74,8 +73,8 @@ pub fn show_default_interface() -> Result<(), Box<dyn Error>> {
     let mut table = Table::new();
     table
         .load_preset(NOTHING)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["#", "Key", "Value"]);
+        .set_content_arrangement(ContentArrangement::Dynamic);
+
     table.add_row(vec![
         Cell::new(&iface.index),
         Cell::new("Name"),
