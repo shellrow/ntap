@@ -1,8 +1,8 @@
 use std::error::Error;
 
+use crate::net::socket::SocketInfoOption;
 use comfy_table::presets::NOTHING;
 use comfy_table::*;
-use crate::net::socket::SocketInfoOption;
 
 pub fn show_socket_info() -> Result<(), Box<dyn Error>> {
     let sockets = crate::net::socket::get_sockets_info(SocketInfoOption::default());
@@ -10,7 +10,13 @@ pub fn show_socket_info() -> Result<(), Box<dyn Error>> {
     table
         .load_preset(NOTHING)
         .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["Protocol", "Local Socket", "Remote Socket", "PID", "Process Name"]);
+        .set_header(vec![
+            "Protocol",
+            "Local Socket",
+            "Remote Socket",
+            "PID",
+            "Process Name",
+        ]);
     for socket in sockets {
         table.add_row(vec![
             Cell::new(&socket.protocol.as_str()),
@@ -18,7 +24,11 @@ pub fn show_socket_info() -> Result<(), Box<dyn Error>> {
             if socket.remote_ip_addr.is_none() {
                 Cell::new("")
             } else {
-                Cell::new(format!("{}:{}", socket.remote_ip_addr.unwrap(), socket.remote_port.unwrap()))
+                Cell::new(format!(
+                    "{}:{}",
+                    socket.remote_ip_addr.unwrap(),
+                    socket.remote_port.unwrap()
+                ))
             },
             if let Some(process) = &socket.process {
                 Cell::new(&process.pid.to_string())

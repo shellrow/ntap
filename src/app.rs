@@ -4,7 +4,10 @@ use std::time::Duration;
 
 use crate::{
     config::AppConfig,
-    net::{host::HostDisplayInfo, service::ServiceDisplayInfo, stat::NetStatData, socket::SocketDisplayInfo},
+    net::{
+        host::HostDisplayInfo, service::ServiceDisplayInfo, socket::SocketDisplayInfo,
+        stat::NetStatData,
+    },
     process::ProcessDisplayInfo,
 };
 use ratatui::widgets::TableState;

@@ -1,8 +1,8 @@
 pub mod interface;
+pub mod ip_info;
 pub mod monitor;
 pub mod route;
 pub mod socket;
-pub mod ip_info;
 
 pub enum AppCommands {
     Monitor,
@@ -22,7 +22,7 @@ impl AppCommands {
             "route" => AppCommands::Route,
             "socket" => AppCommands::Socket,
             "ipinfo" => AppCommands::IpInfo,
-            _ => AppCommands::Monitor
+            _ => AppCommands::Monitor,
         }
     }
 }

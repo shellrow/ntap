@@ -72,13 +72,11 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
             ),
         ])?;
     } else {
-        simplelog::CombinedLogger::init(vec![
-            simplelog::WriteLogger::new(
-                config.logging.level.to_level_filter(),
-                default_log_config,
-                log_file,
-            ),
-        ])?;
+        simplelog::CombinedLogger::init(vec![simplelog::WriteLogger::new(
+            config.logging.level.to_level_filter(),
+            default_log_config,
+            log_file,
+        )])?;
     }
     // Start threads
     let mut threads: Vec<thread::JoinHandle<()>> = vec![];
@@ -96,8 +94,7 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
             let iface = iface.clone();
             let pcap_option = crate::net::pcap::PacketCaptureOptions::from_interface(&iface);
             let thread_name = format!("pcap-thread-{}", iface.name.clone());
-            let pcap_thread =
-                thread::Builder::new().name(thread_name.clone());
+            let pcap_thread = thread::Builder::new().name(thread_name.clone());
             let pcap_handler = pcap_thread.spawn(move || {
                 if pcap_thread_index == 0 {
                     netstat_strage_pcap.load_ipdb();
@@ -141,10 +138,13 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     }
 
     thread_log!(info, "start TUI, netstat_data_update");
-    
+
     // Clear screen before starting TUI
     let mut stdout = std::io::stdout();
-    crossterm::execute!(stdout, crossterm::terminal::Clear(crossterm::terminal::ClearType::All))?;
+    crossterm::execute!(
+        stdout,
+        crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
+    )?;
     // Move cursor to top left corner
     crossterm::execute!(stdout, crossterm::cursor::MoveTo(0, 0))?;
 

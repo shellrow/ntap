@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::db;
+use std::collections::HashMap;
 
 /// In-memory service database with hash map
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,15 +1,15 @@
+mod app;
+mod config;
 mod db;
 mod deps;
+mod handler;
 mod net;
-mod sys;
-mod config;
-mod thread_log;
 mod notification;
 mod process;
-mod time;
-mod app;
-mod handler;
+mod sys;
 mod terminal;
+mod thread_log;
+mod time;
 mod ui;
 
 use clap::{crate_description, crate_name, crate_version, value_parser};
@@ -23,9 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let subcommand_name = args.subcommand_name().unwrap_or("");
     let app_command = AppCommands::from_str(subcommand_name);
     match app_command {
-        AppCommands::Monitor => {
-            handler::monitor::monitor(&args)
-        },
+        AppCommands::Monitor => handler::monitor::monitor(&args),
         AppCommands::Interfaces => handler::interface::show_interfaces(),
         AppCommands::Interface => handler::interface::show_default_interface(),
         AppCommands::Route => handler::route::show_routes(),

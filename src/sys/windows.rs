@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-use inquire::Confirm;
 use crate::deps::{NPCAP_DIST_BASE_URL, NPCAP_INSTALLER_FILENAME};
+use inquire::Confirm;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use winreg::enums::RegDisposition;
 use winreg::enums::HKEY_LOCAL_MACHINE;
 use winreg::RegKey;
@@ -180,16 +180,21 @@ pub fn check_deps() -> Result<(), Box<dyn std::error::Error>> {
             match e {
                 crate::deps::DepsError::Missing(s) => {
                     if s == crate::deps::NPCAP_SOFTWARE_NAME.to_string() {
-                        let ans: bool = Confirm::new("Npcap is not installed, would you like to download & install it ?")
-                            .prompt()
-                            .unwrap();
+                        let ans: bool = Confirm::new(
+                            "Npcap is not installed, would you like to download & install it ?",
+                        )
+                        .prompt()
+                        .unwrap();
                         if ans == false {
                             return Err("On windows, Npcap is required for ntap to work properly. Please install Npcap and try again.".into());
                         }
                         // Download the latest release of npcap installer
                         if let Some(download_dir) = crate::sys::get_download_dir_path() {
                             let installer_path = download_npcap_with_progress(&download_dir)?;
-                            println!("Npcap installer downloaded successfully: {}", installer_path.to_string_lossy());
+                            println!(
+                                "Npcap installer downloaded successfully: {}",
+                                installer_path.to_string_lossy()
+                            );
                             // Install npcap
                             println!("Installing Npcap ...");
                             // Verify the checksum of the downloaded npcap installer
@@ -197,14 +202,14 @@ pub fn check_deps() -> Result<(), Box<dyn std::error::Error>> {
                                 Ok(_) => println!("Npcap installer checksum is correct !"),
                                 Err(e) => {
                                     println!("{}", e);
-                                },
+                                }
                             }
                             // Install npcap
                             match crate::deps::run_npcap_installer(&installer_path) {
                                 Ok(_) => println!("Npcap installed successfully !"),
                                 Err(e) => {
                                     println!("{}", e);
-                                },
+                                }
                             }
                             println!("Npcap installed successfully.");
                         }
@@ -220,7 +225,9 @@ pub fn check_deps() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Download npcap installer with progress
-pub fn download_npcap_with_progress(dst_dir_path: &PathBuf) -> Result<PathBuf, Box<dyn std::error::Error>> {
+pub fn download_npcap_with_progress(
+    dst_dir_path: &PathBuf,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let npcap_installer_url = format!("{}{}", NPCAP_DIST_BASE_URL, NPCAP_INSTALLER_FILENAME);
     // Check and create download dir
     if !dst_dir_path.exists() {
@@ -229,7 +236,7 @@ pub fn download_npcap_with_progress(dst_dir_path: &PathBuf) -> Result<PathBuf, B
     let npcap_target_path: std::path::PathBuf = dst_dir_path.join(NPCAP_INSTALLER_FILENAME);
     // Download npcap installer if not exists
     if std::path::Path::new(&npcap_target_path).exists() {
-        return Ok(npcap_target_path); 
+        return Ok(npcap_target_path);
     }
     let rt = tokio::runtime::Runtime::new().unwrap();
     let installer_save_path: PathBuf = npcap_target_path.clone();

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use super::traffic::TrafficDisplayInfo;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceDisplayInfo {

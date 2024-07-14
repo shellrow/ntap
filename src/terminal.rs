@@ -5,12 +5,12 @@ use std::{
 };
 
 use crate::{app::App, sys, ui};
+use crate::{config::AppConfig, net::stat::NetStatStrage};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use crate::{config::AppConfig, net::stat::NetStatStrage};
 use ratatui::prelude::*;
 use std::sync::Arc;
 

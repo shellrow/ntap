@@ -1,8 +1,8 @@
 #![allow(unused)]
 
 use crate::thread_log;
-use std::path::PathBuf;
 use clap::{crate_name, crate_version};
+use std::path::PathBuf;
 
 #[cfg(not(target_os = "windows"))]
 mod unix;

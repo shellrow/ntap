@@ -5,7 +5,7 @@ use comfy_table::*;
 
 pub fn show_public_ip_info() -> Result<(), Box<dyn Error>> {
     let runtime = tokio::runtime::Runtime::new()?;
-    let result : Result<(), Box<dyn Error>> = runtime.block_on(async {
+    let result: Result<(), Box<dyn Error>> = runtime.block_on(async {
         println!("Public IPv4 Info");
         let mut table = Table::new();
         table

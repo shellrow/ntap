@@ -14,7 +14,13 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
     table
         .load_preset(NOTHING)
         .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["Interface", "Source", "Destination", "Netmask", "Gateway"]);
+        .set_header(vec![
+            "Interface",
+            "Source",
+            "Destination",
+            "Netmask",
+            "Gateway",
+        ]);
     for iface in interfaces.clone() {
         if iface.ipv4.len() == 0 {
             continue;
@@ -34,7 +40,7 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
                         Cell::new(&ipv4.netmask()),
                         Cell::new(ipv4_gateway),
                     ]);
-                }else{
+                } else {
                     table.add_row(vec![
                         Cell::new(&iface.name),
                         Cell::new(&ipv4.addr),
@@ -44,8 +50,9 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
                     ]);
                 }
             }
-        }else{
-            if iface.if_type == InterfaceType::Loopback || iface.ipv4[0].addr == Ipv4Addr::LOCALHOST {
+        } else {
+            if iface.if_type == InterfaceType::Loopback || iface.ipv4[0].addr == Ipv4Addr::LOCALHOST
+            {
                 table.add_row(vec![
                     Cell::new(iface.name),
                     Cell::new(&iface.ipv4[0].addr),
@@ -54,7 +61,7 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
                     Cell::new(""),
                 ]);
             }
-        }    
+        }
     }
     println!("{table}");
 
@@ -64,7 +71,13 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
     table
         .load_preset(NOTHING)
         .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["Interface", "Source", "Destination", "Netmask", "Gateway"]);
+        .set_header(vec![
+            "Interface",
+            "Source",
+            "Destination",
+            "Netmask",
+            "Gateway",
+        ]);
     for iface in interfaces {
         if iface.ipv6.len() == 0 {
             continue;
@@ -84,7 +97,7 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
                         Cell::new(&ipv6.netmask()),
                         Cell::new(ipv6_gateway),
                     ]);
-                }else{
+                } else {
                     table.add_row(vec![
                         Cell::new(&iface.name),
                         Cell::new(&ipv6.addr),
@@ -94,8 +107,9 @@ pub fn show_routes() -> Result<(), Box<dyn Error>> {
                     ]);
                 }
             }
-        }else{
-            if iface.if_type == InterfaceType::Loopback || iface.ipv6[0].addr == Ipv6Addr::LOCALHOST {
+        } else {
+            if iface.if_type == InterfaceType::Loopback || iface.ipv6[0].addr == Ipv6Addr::LOCALHOST
+            {
                 table.add_row(vec![
                     Cell::new(iface.name),
                     Cell::new(&iface.ipv6[0].addr),

@@ -1,6 +1,6 @@
-use std::{fs, path::PathBuf};
 use rangemap::RangeInclusiveMap;
 use serde::{Deserialize, Serialize};
+use std::{fs, path::PathBuf};
 
 #[cfg(feature = "bundle")]
 pub const IPV4_ASN_BIN: &[u8] = include_bytes!("../../resources/db/ipv4-asn.bin");

@@ -5,11 +5,14 @@ use super::{
     service::ServiceDisplayInfo,
     traffic::{Direction, TrafficDisplayInfo, TrafficInfo},
 };
-use crate::db::service::ServiceDatabase;
 use crate::db::ip::IpDatabase;
+use crate::db::service::ServiceDatabase;
+use crate::net::socket::{
+    AddressFamily, LocalSocket, ProtocolPort, SocketConnection, SocketDisplayInfo,
+    SocketInfoOption, SocketProcess, TransportProtocol,
+};
 use crate::notification::Notification;
 use crate::process::{ProcessDisplayInfo, ProcessInfo};
-use crate::net::socket::{AddressFamily, LocalSocket, ProtocolPort, SocketConnection, SocketProcess, TransportProtocol, SocketInfoOption, SocketDisplayInfo};
 use crate::thread_log;
 use netdev::{mac::MacAddr, Interface};
 use serde::{Deserialize, Serialize};
@@ -854,7 +857,7 @@ impl NetStatData {
         }
         top_connections
     }
-    
+
     pub fn get_connections_with_opt(
         &self,
         limit: Option<usize>,
@@ -953,20 +956,16 @@ impl NetStatData {
                     port: protocol_port.port,
                     protocol: protocol_port.protocol.as_str().to_string(),
                     name: match protocol_port.protocol {
-                        TransportProtocol::TCP => {
-                            service_db
-                                .tcp_map
-                                .get(&protocol_port.port)
-                                .unwrap_or(&String::from("unknown"))
-                                .clone()
-                        }
-                        TransportProtocol::UDP => {
-                            service_db
-                                .udp_map
-                                .get(&protocol_port.port)
-                                .unwrap_or(&String::from("unknown"))
-                                .clone()
-                        }
+                        TransportProtocol::TCP => service_db
+                            .tcp_map
+                            .get(&protocol_port.port)
+                            .unwrap_or(&String::from("unknown"))
+                            .clone(),
+                        TransportProtocol::UDP => service_db
+                            .udp_map
+                            .get(&protocol_port.port)
+                            .unwrap_or(&String::from("unknown"))
+                            .clone(),
                     },
                     traffic: traffic.to_display_info(),
                 };

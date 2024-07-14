@@ -1,3 +1,4 @@
+use super::DepsError;
 use crate::sys;
 use privilege::runas::Command as RunasCommand;
 use sha2::{Digest, Sha256};
@@ -5,14 +6,14 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::path::PathBuf;
-use super::DepsError;
 
 pub const NPCAP_SOFTWARE_NAME: &str = "Npcap";
 pub const NPCAP_INSTALL_DIR_NAME: &str = "npcap";
 pub const NPCAP_SDK_DIR_NAME: &str = "npcap-sdk-1.13";
 pub const NPCAP_INSTALLER_FILENAME: &str = "npcap-1.79.exe";
 pub const NPCAP_SDK_FILENAME: &str = "npcap-sdk-1.13.zip";
-pub const NPCAP_INSTALLER_HASH: &str = "A95577EBBC67FC45B319E2EF3A55F4E9B211FE82ED4CB9D8BE6B1A9E2425CE53";
+pub const NPCAP_INSTALLER_HASH: &str =
+    "A95577EBBC67FC45B319E2EF3A55F4E9B211FE82ED4CB9D8BE6B1A9E2425CE53";
 pub const NPCAP_SDK_HASH: &str = "DAD1F2BF1B02B787BE08CA4862F99E39A876C1F274BAC4AC0CEDC9BBC58F94FD";
 pub const NPCAP_DIST_BASE_URL: &str = "https://npcap.com/dist/";
 pub const NPCAP_LIB_NAME: &str = "Packet.lib";
