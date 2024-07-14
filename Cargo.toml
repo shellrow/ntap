@@ -47,3 +47,4 @@ publish-jobs = ["homebrew"]
 pr-run-mode = "plan"
 # Whether to install an updater program
 install-updater = false
+include = ["resources/doc/USAGE.md"]
