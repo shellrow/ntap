@@ -22,11 +22,11 @@ impl ServiceDatabase {
         Ok(service_db)
     }
     pub fn load_tcp_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.tcp_map = db::tcp_service::get_map();
+        self.tcp_map = ntap_db_tcp_service::get_map();
         Ok(())
     }
     pub fn load_udp_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.udp_map = db::udp_service::get_map();
+        self.udp_map = ntap_db_udp_service::get_map();
         Ok(())
     }
 }

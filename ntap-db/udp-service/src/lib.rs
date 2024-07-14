@@ -1,9 +1,10 @@
+
 use std::{collections::HashMap, fs, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "bundle")]
-pub const UDP_SERVICE_BIN: &[u8] = include_bytes!("../../resources/db/udp-service.bin");
+pub const UDP_SERVICE_BIN: &[u8] = include_bytes!("../../../resources/db/udp-service.bin");
 
 pub const UDP_SERVICE_BIN_NAME: &str = "udp-service.bin";
 pub const UDP_SERVICE_R2_URL: &str = "https://r2.ntap.io/udp-service.bin";

@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs, path::PathBuf};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "bundle")]
-pub const AS_BIN: &[u8] = include_bytes!("../../resources/db/as.bin");
+pub const AS_BIN: &[u8] = include_bytes!("../../../resources/db/as.bin");
 
 pub const AS_BIN_NAME: &str = "as.bin";
 pub const AS_R2_URL: &str = "https://r2.ntap.io/as.bin";
