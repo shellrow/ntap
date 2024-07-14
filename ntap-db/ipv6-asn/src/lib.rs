@@ -3,7 +3,7 @@ use rangemap::RangeInclusiveMap;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "bundle")]
-pub const IPV6_ASN_BIN: &[u8] = include_bytes!("../../../resources/db/ipv6-asn.bin");
+pub const IPV6_ASN_BIN: &[u8] = include_bytes!("../resources/ipv6-asn.bin");
 
 pub const IPV6_ASN_BIN_NAME: &str = "ipv6-asn.bin";
 pub const IPV6_ASN_R2_URL: &str = "https://r2.ntap.io/ipv6-asn.bin";

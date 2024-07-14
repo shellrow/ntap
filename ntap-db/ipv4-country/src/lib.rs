@@ -3,7 +3,7 @@ use rangemap::RangeInclusiveMap;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "bundle")]
-pub const IPV4_COUNTRY_BIN: &[u8] = include_bytes!("../../../resources/db/ipv4-country.bin");
+pub const IPV4_COUNTRY_BIN: &[u8] = include_bytes!("../resources/ipv4-country.bin");
 
 pub const IPV4_COUNTRY_BIN_NAME: &str = "ipv4-country.bin";
 pub const IPV4_COUNTRY_R2_URL: &str = "https://r2.ntap.io/ipv4-country.bin";
