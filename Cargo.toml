@@ -7,7 +7,7 @@ description = "Real-time network utilization monitoring tool"
 repository = "https://github.com/shellrow/ntap"
 homepage = "https://github.com/shellrow/ntap"
 documentation = "https://github.com/shellrow/ntap"
-readme = "../README.md"
+readme = "README.md"
 keywords = ["network","security","cross-platform"]
 categories = ["network-programming"]
 license = "MIT"
@@ -23,10 +23,9 @@ tokio = { version = "1.38" }
 clap = { version = "4.5", features = ["cargo"] }
 crossterm = "0.27"
 anyhow = "1.0"
-argh = "0.1"
 rand = "0.8"
-color-eyre = "0.6"
-palette = "0.7"
+#color-eyre = "0.6"
+#palette = "0.7"
 ratatui = "0.25"
 comfy-table = "7.1"
 hickory-resolver = { version = "0.24" }
