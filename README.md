@@ -8,7 +8,7 @@ Real-time network utilization monitoring tool.
 ## Overview
 **ntap** provides comprehensive insights into your network's activity, enabling users to monitor traffic, manage connections, and view network configurations with ease.
 
-![image](resources/ntap-ss-overview.png)  
+![image](resources/ss/ntap-ss-overview.png)  
 
 ## Features
 - **Real-time Monitoring**: Track network utilization as it happens.
