@@ -1,0 +1,18 @@
+[package]
+name = "ntap-db-udp-service"
+version.workspace = true
+edition = "2021"
+authors.workspace = true
+repository = "https://github.com/shellrow/ntap-db"
+documentation = "https://github.com/shellrow/ntap-db"
+readme = "README.md"
+license = "MIT"
+description = "ntap-db-udp-service"
+
+[dependencies]
+serde = { workspace = true }
+bincode = { workspace = true }
+
+[features]
+default = ["bundle"]
+bundle = []

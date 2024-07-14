@@ -39,27 +39,27 @@ impl IpDatabase {
         Ok(ip_db)
     }
     pub fn load_ipv4_country_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.ipv4_country_map = db::ipv4_country::get_map();
+        self.ipv4_country_map = ntap_db_ipv4_country::get_map();
         Ok(())
     }
     pub fn load_ipv6_country_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.ipv6_country_map = db::ipv6_country::get_map();
+        self.ipv6_country_map = ntap_db_ipv6_country::get_map();
         Ok(())
     }
     pub fn load_ipv4_asn_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.ipv4_asn_map = db::ipv4_asn::get_map();
+        self.ipv4_asn_map = ntap_db_ipv4_asn::get_map();
         Ok(())
     }
     pub fn load_ipv6_asn_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.ipv6_asn_map = db::ipv6_asn::get_map();
+        self.ipv6_asn_map = ntap_db_ipv6_asn::get_map();
         Ok(())
     }
     pub fn load_country_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.country_map = db::country::get_map();
+        self.country_map = ntap_db_country::get_map();
         Ok(())
     }
     pub fn load_autonomous_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.autonomous_map = db::asn::get_map();
+        self.autonomous_map = ntap_db_as::get_map();
         Ok(())
     }
     pub fn get_ipv4_info(&self, ipv4_addr: Ipv4Addr) -> Option<IpInfo> {

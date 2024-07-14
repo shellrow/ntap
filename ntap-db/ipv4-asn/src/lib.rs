@@ -1,9 +1,9 @@
+use std::{fs, path::PathBuf};
 use rangemap::RangeInclusiveMap;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
 
 #[cfg(feature = "bundle")]
-pub const IPV4_ASN_BIN: &[u8] = include_bytes!("../../resources/db/ipv4-asn.bin");
+pub const IPV4_ASN_BIN: &[u8] = include_bytes!("../resources/ipv4-asn.bin");
 
 pub const IPV4_ASN_BIN_NAME: &str = "ipv4-asn.bin";
 pub const IPV4_ASN_R2_URL: &str = "https://r2.ntap.io/ipv4-asn.bin";

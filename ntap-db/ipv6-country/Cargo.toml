@@ -1,0 +1,19 @@
+[package]
+name = "ntap-db-ipv6-country"
+version.workspace = true
+edition = "2021"
+authors.workspace = true
+repository = "https://github.com/shellrow/ntap-db"
+documentation = "https://github.com/shellrow/ntap-db"
+readme = "README.md"
+license = "MIT"
+description = "ntap-db-ipv6-country"
+
+[dependencies]
+serde = { workspace = true }
+bincode = { workspace = true }
+rangemap = { workspace = true }
+
+[features]
+default = ["bundle"]
+bundle = []
