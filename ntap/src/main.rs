@@ -1,4 +1,4 @@
-mod app;
+mod tui;
 mod config;
 mod db;
 mod deps;
@@ -7,10 +7,8 @@ mod net;
 mod notification;
 mod process;
 mod sys;
-mod terminal;
 mod thread_log;
 mod time;
-mod ui;
 
 use clap::{crate_description, crate_name, crate_version, value_parser};
 use clap::{Arg, ArgMatches, Command};
@@ -23,12 +21,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     let subcommand_name = args.subcommand_name().unwrap_or("");
     let app_command = AppCommands::from_str(subcommand_name);
     match app_command {
+        AppCommands::Live => handler::live::live_capture(&args),
         AppCommands::Monitor => handler::monitor::monitor(&args),
         AppCommands::Interfaces => handler::interface::show_interfaces(),
         AppCommands::Interface => handler::interface::show_default_interface(),
         AppCommands::Route => handler::route::show_routes(),
         AppCommands::Socket => handler::socket::show_socket_info(),
         AppCommands::IpInfo => handler::ip_info::show_public_ip_info(),
+        AppCommands::Default => {
+            // If no subcommand is specified, enter live mode by default
+            handler::live::live_capture(&args)
+        }
     }
 }
 
@@ -37,6 +40,14 @@ fn parse_args() -> ArgMatches {
         .version(crate_version!())
         .about(crate_description!())
         .after_help("By default, if no options are specified, ntap enters the monitor mode which continuously displays live network usage statistics.")
+        .arg(
+            Arg::new("limit")
+                .help("Limit the number of packets to display")
+                .short('l')
+                .long("limit")
+                .value_name("count")
+                .value_parser(value_parser!(u8)),
+        )
         .arg(
             Arg::new("tick_rate")
                 .help("Time in ms between two ticks")
@@ -50,7 +61,11 @@ fn parse_args() -> ArgMatches {
                 .long("enhanced_graphics")
                 .num_args(0),
         )
-        // Sub-command for monitor mode. This is the default mode of ntap
+        // Sub-command for live mode. This is the default mode of ntap
+        .subcommand(Command::new("live")
+            .about("Start live packet capture. Live mode captures and displays live network packets.")
+        )
+        // Sub-command for monitor mode.
         .subcommand(Command::new("monitor")
             .about("Enter monitor mode. Monitor mode continuously displays live network usage statistics.")
         )

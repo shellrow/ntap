@@ -236,6 +236,72 @@ pub fn start_capture(
     report
 }
 
+pub fn start_live_capture(
+    capture_options: PacketCaptureOptions,
+    msg_tx: Sender<PacketFrame>,
+    interface: Interface,
+) {
+    let config = nex::datalink::Config {
+        write_buffer_size: 4096,
+        read_buffer_size: 4096,
+        read_timeout: Some(capture_options.read_timeout),
+        write_timeout: None,
+        channel_type: nex::datalink::ChannelType::Layer2,
+        bpf_fd_attempts: 1000,
+        linux_fanout: None,
+        promiscuous: capture_options.promiscuous,
+    };
+    let (mut _tx, mut rx) = match nex::datalink::channel(&interface, config) {
+        Ok(nex::datalink::Channel::Ethernet(tx, rx)) => (tx, rx),
+        Ok(_) => {
+            thread_log!(warn, "Unknown channel type");
+            return;
+        }
+        Err(e) => {
+            thread_log!(error, "Error happened {}", e);
+            return;
+        }
+    };
+    let start_time = Instant::now();
+    loop {
+        match rx.next() {
+            Ok(packet) => {
+                let mut parse_option: ParseOption = ParseOption::default();
+                if interface.is_tun()
+                    || (cfg!(any(target_os = "macos", target_os = "ios"))
+                        && interface.is_loopback())
+                {
+                    let payload_offset;
+                    if interface.is_loopback() {
+                        payload_offset = 14;
+                    } else {
+                        payload_offset = 0;
+                    }
+                    parse_option.from_ip_packet = true;
+                    parse_option.offset = payload_offset;
+                }
+                let frame: Frame = Frame::from_bytes(&packet, parse_option);
+                if filter_packet(&frame, &capture_options) {
+                    let packet_frame = PacketFrame::from_nex_frame(
+                        0,
+                        interface.index,
+                        interface.name.clone(),
+                        frame,
+                    );
+                    match msg_tx.send(packet_frame) {
+                        Ok(_) => {}
+                        Err(_) => {}
+                    }
+                }
+            }
+            Err(_) => {}
+        }
+        if Instant::now().duration_since(start_time) > capture_options.capture_timeout {
+            break;
+        }
+    }
+}
+
 pub fn start_background_capture(
     capture_options: PacketCaptureOptions,
     netstat_strage: &mut Arc<NetStatStrage>,

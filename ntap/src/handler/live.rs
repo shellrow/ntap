@@ -1,15 +1,16 @@
 use crate::config::AppConfig;
-use crate::net::stat::NetStatStrage;
+use crate::net::packet::{PacketFrame, PacketStorage};
 use crate::thread_log;
 use std::error::Error;
 use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 use clap::ArgMatches;
 
-pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
+pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     // Check .ntap directory
     match crate::sys::get_config_dir_path() {
         Some(_config_dir) => {}
@@ -80,28 +81,23 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     }
     // Start threads
     let mut threads: Vec<thread::JoinHandle<()>> = vec![];
-
-    let netstat_strage: Arc<NetStatStrage> = Arc::new(NetStatStrage::new());
-    let mut netstat_strage_socket = Arc::clone(&netstat_strage);
-    let mut netstat_strage_ui = Arc::clone(&netstat_strage);
-
+    let packet_strage: Arc<PacketStorage> = Arc::new(PacketStorage::new());
+    let packet_strage_ui: Arc<PacketStorage> = Arc::clone(&packet_strage);
     let usable_interfaces = crate::net::interface::get_usable_interfaces();
     let mut pcap_thread_index = 0;
+    let (tx, rx): (Sender<PacketFrame>, Receiver<PacketFrame>) = channel();
     let pcap_handlers = usable_interfaces
         .iter()
         .map(|iface| {
-            let mut netstat_strage_pcap = Arc::clone(&netstat_strage);
             let iface = iface.clone();
             let pcap_option = crate::net::pcap::PacketCaptureOptions::from_interface(&iface);
             let thread_name = format!("pcap-thread-{}", iface.name.clone());
             let pcap_thread = thread::Builder::new().name(thread_name.clone());
+            let tx_clone = tx.clone();
             let pcap_handler = pcap_thread.spawn(move || {
-                if pcap_thread_index == 0 {
-                    netstat_strage_pcap.load_ipdb();
-                }
-                crate::net::pcap::start_background_capture(
+                crate::net::pcap::start_live_capture(
                     pcap_option,
-                    &mut netstat_strage_pcap,
+                    tx_clone,
                     iface,
                 );
             });
@@ -111,10 +107,14 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
         })
         .collect::<Vec<_>>();
 
-    let socket_handler = thread::spawn(move || {
-        thread_log!(info, "start thread socket_info_update");
-        crate::net::socket::start_socket_info_update(&mut netstat_strage_socket);
+    let receiver_handler = thread::spawn(move || {
+        thread_log!(info, "start mpsc reveiver thread");
+        while let Ok(frame) = rx.recv() {
+            packet_strage.add_packet(frame);
+        }
     });
+
+    threads.push(receiver_handler);
 
     for pcap_handler in pcap_handlers {
         match pcap_handler {
@@ -126,18 +126,8 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
             }
         }
     }
-    threads.push(socket_handler);
 
-    if config.network.reverse_dns {
-        let mut netstat_strage_dns = Arc::clone(&netstat_strage);
-        let dns_handler = thread::spawn(move || {
-            thread_log!(info, "start thread dns_map_update");
-            crate::net::dns::start_dns_map_update(&mut netstat_strage_dns);
-        });
-        threads.push(dns_handler);
-    }
-
-    thread_log!(info, "start TUI, netstat_data_update");
+    thread_log!(info, "start TUI, live_packet_capture");
 
     // Clear screen before starting TUI
     let mut stdout = std::io::stdout();
@@ -148,10 +138,10 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     // Move cursor to top left corner
     crossterm::execute!(stdout, crossterm::cursor::MoveTo(0, 0))?;
 
-    crate::tui::monitor::terminal::run(
+    crate::tui::live::terminal::run(
         config,
         app.contains_id("enhanced_graphics"),
-        &mut netstat_strage_ui,
+        &packet_strage_ui,
     )?;
     Ok(())
 }
