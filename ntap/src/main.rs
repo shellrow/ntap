@@ -51,15 +51,15 @@ fn parse_args() -> ArgMatches {
         .arg(
             Arg::new("tickrate")
                 .help("Time in milliseconds between refreshes")
-                .long("r")
+                .short('r')
                 .long("tickrate")
                 .value_name("duration_ms")
                 .value_parser(value_parser!(u64)),
         )
         .arg(
-            Arg::new("enhanced_graphics")
+            Arg::new("enhanced-graphics")
                 .help("Whether unicode symbols are used to improve the overall look of the app")
-                .long("enhanced_graphics")
+                .long("enhanced-graphics")
                 .num_args(0),
         )
         // Sub-command for live mode. This is the default mode of ntap

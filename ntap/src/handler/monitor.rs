@@ -150,7 +150,7 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
     crate::tui::monitor::terminal::run(
         config,
-        app.contains_id("enhanced_graphics"),
+        app.contains_id("enhanced-graphics"),
         &mut netstat_strage_ui,
     )?;
     Ok(())

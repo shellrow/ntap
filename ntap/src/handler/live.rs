@@ -141,7 +141,7 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
     crate::tui::live::terminal::run(
         config,
-        app.contains_id("enhanced_graphics"),
+        app.contains_id("enhanced-graphics"),
         &packet_strage_ui,
     )?;
     Ok(())
