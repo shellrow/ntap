@@ -52,32 +52,29 @@ fn draw_packet_table(f: &mut Frame, app: &mut App, area: Rect) {
         .packets
         .iter()
         .map(|packet| {
-            let datetime_vec: Vec<&str> = packet.timestamp.split('T').collect::<Vec<&str>>();
-            let timestamp: String = if datetime_vec.len() > 1 {
-                datetime_vec[1].to_string()
-            } else {
-                packet.timestamp.clone()
-            };
-            // Remove UTC offset that start from + or -
-            let datetime_vec = timestamp.split('+').collect::<Vec<&str>>();
-            let timestamp: String = if datetime_vec.len() > 1 {
-                datetime_vec[0].to_string()
-            } else if datetime_vec.len() > 1 {
-                datetime_vec[0].to_string()
-            } else {
-                timestamp
-            };
             Row::new(vec![
-                timestamp,
-                packet.if_name.clone(),
+                packet.capture_no.to_string(),
+                packet.get_time(),
+                packet.get_src_addr(),
+                packet.get_dst_addr(),
+                packet.get_protocol(),
                 packet.packet_len.to_string(),
+                packet.get_src_port(),
+                packet.get_dst_port(),
+                packet.if_name.clone(),
             ])
         })
         .collect::<Vec<Row>>();
     let widths = [
+        Constraint::Length(6),
         Constraint::Length(16),
-        Constraint::Length(10),
+        Constraint::Length(40),
+        Constraint::Length(40),
         Constraint::Length(8),
+        Constraint::Length(8),
+        Constraint::Length(8),
+        Constraint::Length(8),
+        Constraint::Length(10),
     ];
 
     //let mut table_state = TableState::default();
@@ -86,9 +83,15 @@ fn draw_packet_table(f: &mut Frame, app: &mut App, area: Rect) {
         //.style(Style::new().blue())
         .header(
             Row::new(vec![
+                "No.",
                 "Timestamp",
-                "Interface",
+                "SRC Address",
+                "DST Address",
+                "Protocol",
                 "Length",
+                "SRC Port",
+                "DST Port",
+                "Interface",
             ])
             .style(Style::new().bold()), //.bottom_margin(1),
         )

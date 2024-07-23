@@ -109,7 +109,8 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
     let receiver_handler = thread::spawn(move || {
         thread_log!(info, "start mpsc reveiver thread");
-        while let Ok(frame) = rx.recv() {
+        while let Ok(mut frame) = rx.recv() {
+            frame.capture_no = packet_strage.generate_capture_no();
             packet_strage.add_packet(frame);
         }
     });
