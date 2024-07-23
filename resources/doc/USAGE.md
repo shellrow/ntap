@@ -65,9 +65,10 @@ ntap help socket
 ```
 
 ## Options
---tick_rate <duration_ms>: Specifies the time in milliseconds between two updates in monitor mode.
+--tickrate(-r) <duration_ms>: Specifies the time in milliseconds between two updates in monitor mode.
 ```bash
-ntap --tick_rate 1000 monitor
+ntap --tickrate 1000 monitor
+ntap --r 1000 monitor
 ```
 
 --enhanced_graphics: Enables the use of Unicode symbols to improve the appearance of the application.

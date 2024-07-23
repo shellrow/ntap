@@ -32,8 +32,8 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     // Load AppConfig
     let mut config = AppConfig::load();
 
-    if app.contains_id("tick_rate") {
-        config.display.tick_rate = *app.get_one("tick_rate").unwrap_or(&1000);
+    if app.contains_id("tickrate") {
+        config.display.tick_rate = *app.get_one("tickrate").unwrap_or(&1000);
     }
 
     // Init logger

@@ -49,9 +49,10 @@ fn parse_args() -> ArgMatches {
                 .value_parser(value_parser!(u8)),
         )
         .arg(
-            Arg::new("tick_rate")
-                .help("Time in ms between two ticks")
-                .long("tick_rate")
+            Arg::new("tickrate")
+                .help("Time in milliseconds between refreshes")
+                .long("r")
+                .long("tickrate")
                 .value_name("duration_ms")
                 .value_parser(value_parser!(u64)),
         )
