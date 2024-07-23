@@ -11,13 +11,18 @@ ntap [OPTIONS] [COMMAND]
 ```
 
 ## Default Behavior
-If no options or commands are specified, ntap will automatically enter the monitor mode:
+If no options or commands are specified, ntap will automatically enter the live capture mode:
 ```bash
 ntap
 ```
-This default mode will continuously display live network usage statistics, providing a quick and easy way to view current network activity without configuring any additional settings.
+This default mode captures packets on all available network interfaces and continuously displays live network packet data flow, providing a quick and easy way to monitor current network activity without the need for additional configuration.
 
 ## Commands
+
+### live: Enters live capture mode to continuously display live network packet data.
+```bash
+ntap live
+```
 
 ### monitor: Enters monitor mode to continuously display live network usage statistics.
 ```bash
