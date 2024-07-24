@@ -36,6 +36,13 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
         config.display.tick_rate = *app.get_one("tickrate").unwrap_or(&1000);
     }
 
+    let storage_capacity: u8;
+    if app.contains_id("limit") {
+        storage_capacity = *app.get_one("limit").unwrap_or(&100);
+    } else {
+        storage_capacity = u8::MAX;
+    }
+
     // Init logger
     let log_file_path = if let Some(file_path) = &config.logging.file_path {
         // Convert to PathBuf
@@ -81,7 +88,7 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     }
     // Start threads
     let mut threads: Vec<thread::JoinHandle<()>> = vec![];
-    let packet_strage: Arc<PacketStorage> = Arc::new(PacketStorage::new());
+    let packet_strage: Arc<PacketStorage> = Arc::new(PacketStorage::with_capacity(storage_capacity as usize));
     let packet_strage_ui: Arc<PacketStorage> = Arc::clone(&packet_strage);
     let usable_interfaces = crate::net::interface::get_usable_interfaces();
     let mut pcap_thread_index = 0;

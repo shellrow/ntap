@@ -186,6 +186,18 @@ impl PacketStorage {
         }
     }
 
+    pub fn with_capacity(capacity: usize) -> Self {
+        PacketStorage {
+            storage: Arc::new(RwLock::new(VecDeque::new())),
+            capture_counter: Arc::new(AtomicUsize::new(1)),
+            max_capacity: capacity,
+        }
+    }
+    
+    pub fn set_max_capacity(&mut self, max_capacity: usize) {
+        self.max_capacity = max_capacity;
+    }
+
     pub fn generate_capture_no(&self) -> usize {
         self.capture_counter.fetch_add(1, Ordering::SeqCst)
     }
