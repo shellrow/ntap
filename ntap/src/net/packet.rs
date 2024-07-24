@@ -4,7 +4,7 @@ use nex::packet::{arp, icmp};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PacketFrame {
@@ -172,7 +172,7 @@ impl PacketFrame {
 }
 
 pub struct PacketStorage {
-    storage: Arc<Mutex<VecDeque<PacketFrame>>>,
+    storage: Arc<RwLock<VecDeque<PacketFrame>>>,
     capture_counter: Arc<AtomicUsize>,
     max_capacity: usize,
 }
@@ -180,7 +180,7 @@ pub struct PacketStorage {
 impl PacketStorage {
     pub fn new() -> Self {
         PacketStorage {
-            storage: Arc::new(Mutex::new(VecDeque::new())),
+            storage: Arc::new(RwLock::new(VecDeque::new())),
             capture_counter: Arc::new(AtomicUsize::new(1)),
             max_capacity: u8::MAX as usize,
         }
@@ -191,7 +191,7 @@ impl PacketStorage {
     }
 
     pub fn add_packet(&self, packet: PacketFrame) {
-        match self.storage.try_lock() {
+        match self.storage.try_write() {
             Ok(mut storage) => {
                 // If the storage is full, remove the oldest packet
                 if storage.len() == self.max_capacity {
@@ -206,12 +206,12 @@ impl PacketStorage {
     }
 
     pub fn get_packets(&self) -> Vec<PacketFrame> {
-        match self.storage.lock() {
+        match self.storage.try_read() {
             Ok(storage) => storage.iter().cloned().collect(),
             Err(_) => {
                 // TODO: Log error or return error
                 Vec::new()
-            },
+            }
         }
     }
 }
