@@ -77,6 +77,16 @@ fn draw_packet_table(f: &mut Frame, app: &mut App, area: Rect) {
         Constraint::Length(10),
     ];
 
+    let table_title: String;
+    if app.config.network.interfaces.is_empty() {
+        table_title = "Capturing from all available interfaces".to_string();
+    } else {
+        table_title = format!(
+            "Capturing from {}",
+            app.config.network.interfaces.join(", ")
+        );
+    }
+
     //let mut table_state = TableState::default();
     let table = Table::new(rows, widths)
         .column_spacing(1)
@@ -98,7 +108,7 @@ fn draw_packet_table(f: &mut Frame, app: &mut App, area: Rect) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Packets"),
+                .title(table_title),
         )
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
