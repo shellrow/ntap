@@ -76,9 +76,9 @@ ntap --tickrate 1000 monitor
 ntap --r 1000 monitor
 ```
 
---enhanced_graphics: Enables the use of Unicode symbols to improve the appearance of the application.
+--enhanced-graphics: Enables the use of Unicode symbols to improve the appearance of the application.
 ```bash
-ntap --enhanced_graphics
+ntap --enhanced-graphics
 ```
 
 -h, --help: Prints help information.
