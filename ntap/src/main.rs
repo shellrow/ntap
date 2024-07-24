@@ -9,6 +9,7 @@ mod process;
 mod sys;
 mod thread_log;
 mod time;
+mod util;
 
 use clap::{crate_description, crate_name, crate_version, value_parser};
 use clap::{Arg, ArgMatches, Command};

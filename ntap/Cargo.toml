@@ -39,6 +39,7 @@ time = { version = "0.3", features = ["local-offset"] }
 ipnet = "2.5"
 ipstruct = "0.2"
 home = "0.5"
+termtree = "0.5"
 ntap-db-as = { path = "../ntap-db/as", version = "0.4.0" }
 ntap-db-country = { path = "../ntap-db/country", version = "0.4.0" }
 ntap-db-ipv4-asn = { path = "../ntap-db/ipv4-asn", version = "0.4.0" }

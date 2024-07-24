@@ -1,79 +1,40 @@
 use std::error::Error;
-
-use comfy_table::presets::NOTHING;
-use comfy_table::*;
+use crate::util::tree::node_label;
+use termtree::Tree;
 
 pub fn show_public_ip_info() -> Result<(), Box<dyn Error>> {
     let runtime = tokio::runtime::Runtime::new()?;
     let result: Result<(), Box<dyn Error>> = runtime.block_on(async {
-        println!("Public IPv4 Info");
-        let mut table = Table::new();
-        table
-            .load_preset(NOTHING)
-            .set_content_arrangement(ContentArrangement::Dynamic);
         let ipv4_info = crate::net::ip::get_self_ipv4_info().await?;
-        if ipv4_info.ip_version != "v4" {
-            return Err("Failed to get IPv4 info".into());
-        }
-        table.add_row(vec![
-            Cell::new("IPv4 Address"),
-            Cell::new(ipv4_info.ip_addr).set_alignment(CellAlignment::Left),
-        ]);
-        table.add_row(vec![
-            Cell::new("Country Code"),
-            Cell::new(ipv4_info.country_code).set_alignment(CellAlignment::Left),
-        ]);
-        table.add_row(vec![
-            Cell::new("Country Name"),
-            Cell::new(ipv4_info.country_name).set_alignment(CellAlignment::Left),
-        ]);
-        table.add_row(vec![
-            Cell::new("Network"),
-            Cell::new(ipv4_info.network).set_alignment(CellAlignment::Left),
-        ]);
-        table.add_row(vec![
-            Cell::new("ASN"),
-            Cell::new(ipv4_info.asn).set_alignment(CellAlignment::Left),
-        ]);
-        table.add_row(vec![
-            Cell::new("AS Name"),
-            Cell::new(ipv4_info.as_name).set_alignment(CellAlignment::Left),
-        ]);
-        println!("{table}");
-        println!("Public IPv6 Info");
-        let mut table = Table::new();
-        table
-            .load_preset(NOTHING)
-            .set_content_arrangement(ContentArrangement::Dynamic);
         let ipv6_info = crate::net::ip::get_self_ip_info().await?;
-        if ipv6_info.ip_version != "v6" {
-            return Err("Failed to get IPv6 info".into());
+        let mut tree = Tree::new(node_label("Public IP Info", None, None));
+        if ipv4_info.ip_version == "v4" {
+            let mut ipv4_tree = Tree::new(node_label("IPv4 Info", None, None));
+            ipv4_tree.push(node_label("IPv4 Address", Some(&ipv4_info.ip_addr), None));
+            ipv4_tree.push(node_label("IPv4 Address Decimal", Some(&ipv4_info.ip_addr_dec), None));
+            ipv4_tree.push(node_label("Country Code", Some(&ipv4_info.country_code), None));
+            ipv4_tree.push(node_label("Country Name", Some(&ipv4_info.country_name), None));
+            ipv4_tree.push(node_label("Network", Some(&ipv4_info.network), None));
+            ipv4_tree.push(node_label("ASN", Some(&ipv4_info.asn), None));
+            ipv4_tree.push(node_label("AS Name", Some(&ipv4_info.as_name), None));
+            tree.push(ipv4_tree);
+        } else {
+            tree.push(node_label("IPv4 Info", Some("Failed to get IPv4 info"), None));
         }
-        table.add_row(vec![
-            Cell::new("IPv6 Address"),
-            Cell::new(ipv6_info.ip_addr).set_alignment(CellAlignment::Left),
-        ]);
-        table.add_row(vec![
-            Cell::new("Country Code"),
-            Cell::new(ipv6_info.country_code).set_alignment(CellAlignment::Left),
-        ]);
-        table.add_row(vec![
-            Cell::new("Country Name"),
-            Cell::new(ipv6_info.country_name).set_alignment(CellAlignment::Left),
-        ]);
-        table.add_row(vec![
-            Cell::new("Network"),
-            Cell::new(ipv6_info.network).set_alignment(CellAlignment::Left),
-        ]);
-        table.add_row(vec![
-            Cell::new("ASN"),
-            Cell::new(ipv6_info.asn).set_alignment(CellAlignment::Left),
-        ]);
-        table.add_row(vec![
-            Cell::new("AS Name"),
-            Cell::new(ipv6_info.as_name).set_alignment(CellAlignment::Left),
-        ]);
-        println!("{table}");
+        if ipv6_info.ip_version == "v6" {
+            let mut ipv6_tree = Tree::new(node_label("IPv6 Info", None, None));
+            ipv6_tree.push(node_label("IPv6 Address", Some(&ipv6_info.ip_addr), None));
+            ipv6_tree.push(node_label("IPv6 Address Decimal", Some(&ipv6_info.ip_addr_dec), None));
+            ipv6_tree.push(node_label("Country Code", Some(&ipv6_info.country_code), None));
+            ipv6_tree.push(node_label("Country Name", Some(&ipv6_info.country_name), None));
+            ipv6_tree.push(node_label("Network", Some(&ipv6_info.network), None));
+            ipv6_tree.push(node_label("ASN", Some(&ipv6_info.asn), None));
+            ipv6_tree.push(node_label("AS Name", Some(&ipv6_info.as_name), None));
+            tree.push(ipv6_tree);
+        } else {
+            tree.push(node_label("IPv6 Info", Some("Failed to get IPv6 info"), None));
+        }
+        println!("{}", tree);
         Ok(())
     });
     result?;
