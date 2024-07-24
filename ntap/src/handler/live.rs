@@ -36,6 +36,17 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
         config.display.tick_rate = *app.get_one("tickrate").unwrap_or(&1000);
     }
 
+    if app.contains_id("interfaces") {
+        match app.get_many::<String>("interfaces") {
+            Some(interfaces) => {
+                config.network.interfaces = interfaces.cloned().collect();
+            }
+            None => {
+                config.network.interfaces = Vec::new();
+            }
+        }
+    }
+
     let storage_capacity: u8;
     if app.contains_id("limit") {
         storage_capacity = *app.get_one("limit").unwrap_or(&100);
@@ -90,10 +101,15 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let mut threads: Vec<thread::JoinHandle<()>> = vec![];
     let packet_strage: Arc<PacketStorage> = Arc::new(PacketStorage::with_capacity(storage_capacity as usize));
     let packet_strage_ui: Arc<PacketStorage> = Arc::clone(&packet_strage);
-    let usable_interfaces = crate::net::interface::get_usable_interfaces();
+    let target_interfaces: Vec<netdev::Interface>;
+    if config.network.interfaces.is_empty() {
+        target_interfaces = crate::net::interface::get_usable_interfaces();
+    } else {
+        target_interfaces = crate::net::interface::get_interfaces_by_name(&config.network.interfaces);
+    }
     let mut pcap_thread_index = 0;
     let (tx, rx): (Sender<PacketFrame>, Receiver<PacketFrame>) = channel();
-    let pcap_handlers = usable_interfaces
+    let pcap_handlers = target_interfaces
         .iter()
         .map(|iface| {
             let iface = iface.clone();

@@ -50,6 +50,15 @@ fn parse_args() -> ArgMatches {
                 .value_parser(value_parser!(u8)),
         )
         .arg(
+            Arg::new("interfaces")
+                .help("Specify the interfaces by name. Example: ntap -i eth0,eth1")
+                .short('i')
+                .long("interfaces")
+                .value_name("interfaces")
+                .value_delimiter(',')
+                .value_parser(value_parser!(String))
+        )
+        .arg(
             Arg::new("tickrate")
                 .help("Time in milliseconds between refreshes")
                 .short('r')
