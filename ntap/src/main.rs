@@ -40,7 +40,7 @@ fn parse_args() -> ArgMatches {
     let app: Command = Command::new(crate_name!())
         .version(crate_version!())
         .about(crate_description!())
-        .after_help("By default, if no options are specified, ntap enters the monitor mode which continuously displays live network usage statistics.")
+        .after_help("By default, if no options are specified, ntap enters the live packet capture mode.")
         .arg(
             Arg::new("limit")
                 .help("Limit the number of packets to display")
