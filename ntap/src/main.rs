@@ -59,6 +59,15 @@ fn parse_args() -> ArgMatches {
                 .value_parser(value_parser!(String))
         )
         .arg(
+            Arg::new("protocols")
+                .help("Specify protocols. Example: ntap -p tcp,udp")
+                .short('p')
+                .long("protocols")
+                .value_name("protocols")
+                .value_delimiter(',')
+                .value_parser(value_parser!(String))
+        )
+        .arg(
             Arg::new("tickrate")
                 .help("Time in milliseconds between refreshes")
                 .short('r')

@@ -1,5 +1,7 @@
 use crate::sys;
+use nex::packet::ethernet::EtherType;
 use nex::packet::frame::{DatalinkLayer, IpLayer, TransportLayer};
+use nex::packet::ip::IpNextLevelProtocol;
 use nex::packet::{arp, icmp};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -225,5 +227,35 @@ impl PacketStorage {
                 Vec::new()
             }
         }
+    }
+}
+
+pub fn get_ethertype_from_str(ethertype_name: &str) -> Option<EtherType> {
+    let name = ethertype_name.to_lowercase();
+    // Currently, EtherType not support from_str, so we need to match it manually
+    match name.as_str() {
+        "arp" => Some(EtherType::Arp),
+        "rarp" => Some(EtherType::Rarp),
+        "aarp" => Some(EtherType::Aarp),
+        "ipv4" => Some(EtherType::Ipv4),
+        "ipv6" => Some(EtherType::Ipv6),
+        "vlan" => Some(EtherType::Vlan),
+        "mpls" => Some(EtherType::Mpls),
+        "wakeonlan" => Some(EtherType::WakeOnLan),
+        "rldp" => Some(EtherType::Rldp),
+        "lldp" => Some(EtherType::Lldp),
+        _ => None,
+    }
+}
+
+pub fn get_ip_next_protocol_from_str(protocol_name: &str) -> Option<IpNextLevelProtocol> {
+    let name = protocol_name.to_lowercase();
+    // Currently, IpNextLevelProtocol not support from_str, so we need to match it manually
+    match name.as_str() {
+        "icmp" => Some(IpNextLevelProtocol::Icmp),
+        "icmpv6" => Some(IpNextLevelProtocol::Icmpv6),
+        "tcp" => Some(IpNextLevelProtocol::Tcp),
+        "udp" => Some(IpNextLevelProtocol::Udp),
+        _ => None,
     }
 }

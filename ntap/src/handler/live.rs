@@ -1,6 +1,7 @@
 use crate::config::AppConfig;
 use crate::net::packet::{PacketFrame, PacketStorage};
 use crate::thread_log;
+use std::collections::HashSet;
 use std::error::Error;
 use std::fs::File;
 use std::path::Path;
@@ -9,6 +10,8 @@ use std::thread;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 use clap::ArgMatches;
+use nex::packet::ethernet::EtherType;
+use nex::packet::ip::IpNextLevelProtocol;
 
 pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     // Check .ntap directory
@@ -45,6 +48,29 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
                 config.network.interfaces = Vec::new();
             }
         }
+    }
+
+    let mut ethertypes: HashSet<EtherType> = HashSet::new();
+    let mut ip_next_protocols: HashSet<IpNextLevelProtocol> = HashSet::new();
+    if app.contains_id("protocols") {
+        match app.get_many::<String>("protocols") {
+            Some(protocols_ref) => {
+                let protocols: Vec<String> = protocols_ref.cloned().collect();
+                for protocol in protocols {
+                    if let Some(ethertype) = crate::net::packet::get_ethertype_from_str(&protocol) {
+                        ethertypes.insert(ethertype);
+                    }
+                    if let Some(ip_next_protocol) = crate::net::packet::get_ip_next_protocol_from_str(&protocol) {
+                        ip_next_protocols.insert(ip_next_protocol);
+                    }
+                }
+            }
+            None => {}
+        }
+    }
+    if !ip_next_protocols.is_empty() {
+        ethertypes.insert(EtherType::Ipv4);
+        ethertypes.insert(EtherType::Ipv6);
     }
 
     let storage_capacity: u8;
@@ -113,7 +139,9 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
         .iter()
         .map(|iface| {
             let iface = iface.clone();
-            let pcap_option = crate::net::pcap::PacketCaptureOptions::from_interface(&iface);
+            let mut pcap_option = crate::net::pcap::PacketCaptureOptions::from_interface(&iface);
+            pcap_option.ether_types = ethertypes.clone();
+            pcap_option.ip_protocols = ip_next_protocols.clone();
             let thread_name = format!("pcap-thread-{}", iface.name.clone());
             let pcap_thread = thread::Builder::new().name(thread_name.clone());
             let tx_clone = tx.clone();

@@ -151,6 +151,62 @@ impl PacketCaptureOptions {
         };
         options
     }
+    pub fn add_ethertype_filter(&mut self, ethertype_name: &str) {
+        // Currently, EtherType not support from_str, so we need to match it manually
+        let name = ethertype_name.to_lowercase();
+        match name.as_str() {
+            "arp" => {
+                self.ether_types.insert(EtherType::Arp);
+            }
+            "rarp" => {
+                self.ether_types.insert(EtherType::Rarp);
+            }
+            "aarp" => {
+                self.ether_types.insert(EtherType::Aarp);
+            }
+            "ipv4" => {
+                self.ether_types.insert(EtherType::Ipv4);
+            }
+            "ipv6" => {
+                self.ether_types.insert(EtherType::Ipv6);
+            }
+            "vlan" => {
+                self.ether_types.insert(EtherType::Vlan);
+            }
+            "mpls" => {
+                self.ether_types.insert(EtherType::Mpls);
+            }
+            "wakeonlan" => {
+                self.ether_types.insert(EtherType::WakeOnLan);
+            }
+            "rldp" => {
+                self.ether_types.insert(EtherType::Rldp);
+            }
+            "lldp" => {
+                self.ether_types.insert(EtherType::Lldp);
+            }
+            _ => {}
+        }
+    }
+    pub fn add_ip_next_protocol_filter(&mut self, protocol_name: &str) {
+        // Currently, IpNextLevelProtocol not support from_str, so we need to match it manually
+        let name = protocol_name.to_lowercase();
+        match name.as_str() {
+            "icmp" => {
+                self.ip_protocols.insert(IpNextLevelProtocol::Icmp);
+            }
+            "icmpv6" => {
+                self.ip_protocols.insert(IpNextLevelProtocol::Icmpv6);
+            }
+            "tcp" => {
+                self.ip_protocols.insert(IpNextLevelProtocol::Tcp);
+            }
+            "udp" => {
+                self.ip_protocols.insert(IpNextLevelProtocol::Udp);
+            }
+            _ => {}
+        }
+    }
 }
 
 /// Start packet capture
