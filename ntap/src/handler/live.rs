@@ -4,6 +4,7 @@ use crate::thread_log;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs::File;
+use std::net::IpAddr;
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
@@ -39,6 +40,7 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
         config.display.tick_rate = *app.get_one("tickrate").unwrap_or(&1000);
     }
 
+    // Interface filter
     if app.contains_id("interfaces") {
         match app.get_many::<String>("interfaces") {
             Some(interfaces) => {
@@ -50,6 +52,7 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
         }
     }
 
+    // Protocol filter
     let mut ethertypes: HashSet<EtherType> = HashSet::new();
     let mut ip_next_protocols: HashSet<IpNextLevelProtocol> = HashSet::new();
     if app.contains_id("protocols") {
@@ -68,9 +71,26 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
             None => {}
         }
     }
-    if !ip_next_protocols.is_empty() {
+
+    // IP Address filter
+    let ips: HashSet<IpAddr> = match app.get_many::<IpAddr>("ips") {
+        Some(ips_ref) => ips_ref.cloned().collect(),
+        None => HashSet::new(),
+    };
+
+    // Port filter
+    let ports: HashSet<u16> = match app.get_many::<u16>("ports") {
+        Some(ports_ref) => ports_ref.cloned().collect(),
+        None => HashSet::new(),
+    };
+
+    if !ip_next_protocols.is_empty() || ips.len() > 0 || ports.len() > 0 {
         ethertypes.insert(EtherType::Ipv4);
         ethertypes.insert(EtherType::Ipv6);
+        if ports.len() > 0 {
+            ip_next_protocols.insert(IpNextLevelProtocol::Tcp);
+            ip_next_protocols.insert(IpNextLevelProtocol::Udp);
+        }
     }
 
     let storage_capacity: u8;
@@ -142,6 +162,10 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
             let mut pcap_option = crate::net::pcap::PacketCaptureOptions::from_interface(&iface);
             pcap_option.ether_types = ethertypes.clone();
             pcap_option.ip_protocols = ip_next_protocols.clone();
+            pcap_option.src_ips = ips.clone();
+            pcap_option.src_ports = ports.clone();
+            pcap_option.dst_ips = ips.clone();
+            pcap_option.dst_ports = ports.clone();
             let thread_name = format!("pcap-thread-{}", iface.name.clone());
             let pcap_thread = thread::Builder::new().name(thread_name.clone());
             let tx_clone = tx.clone();

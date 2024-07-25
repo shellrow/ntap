@@ -15,6 +15,7 @@ use clap::{crate_description, crate_name, crate_version, value_parser};
 use clap::{Arg, ArgMatches, Command};
 use handler::AppCommands;
 use std::error::Error;
+use std::net::IpAddr;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Parse command line arguments
@@ -60,12 +61,30 @@ fn parse_args() -> ArgMatches {
         )
         .arg(
             Arg::new("protocols")
-                .help("Specify protocols. Example: ntap -p tcp,udp")
-                .short('p')
+                .help("Specify protocols. Example: ntap -P tcp,udp")
+                .short('P')
                 .long("protocols")
                 .value_name("protocols")
                 .value_delimiter(',')
                 .value_parser(value_parser!(String))
+        )
+        .arg(
+            Arg::new("ips")
+                .help("Specify IP addresses. Example: ntap -a 1.1.1.1,8.8.8.8")
+                .short('a')
+                .long("ips")
+                .value_name("ips")
+                .value_delimiter(',')
+                .value_parser(value_parser!(IpAddr))
+        )
+        .arg(
+            Arg::new("ports")
+                .help("Specify ports. Example: ntap -p 80,443")
+                .short('p')
+                .long("ports")
+                .value_name("ports")
+                .value_delimiter(',')
+                .value_parser(value_parser!(u16))
         )
         .arg(
             Arg::new("tickrate")
