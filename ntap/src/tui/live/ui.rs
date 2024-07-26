@@ -74,7 +74,7 @@ fn draw_packet_table(f: &mut Frame, app: &mut App, area: Rect) {
         Constraint::Length(8),
         Constraint::Length(8),
         Constraint::Length(8),
-        Constraint::Length(10),
+        Constraint::Length(38),
     ];
 
     let table_title: String;
