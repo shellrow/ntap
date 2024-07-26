@@ -55,39 +55,9 @@ fn draw_summary(f: &mut Frame, app: &mut App, area: Rect) {
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Percentage(50),
-            Constraint::Percentage(25),
-            Constraint::Percentage(25),
+            Constraint::Percentage(50),
         ])
-        //.margin(1)
         .split(area);
-    let ipv4_addr: String = if let Some(ipv4) =
-        crate::net::interface::get_interface_ipv4(&app.netstat_data.default_interface)
-    {
-        ipv4.to_string()
-    } else {
-        "".to_string()
-    };
-    let ipv6_addr: String = if let Some(ipv6) =
-        crate::net::interface::get_interface_local_ipv6(&app.netstat_data.default_interface)
-    {
-        ipv6.to_string()
-    } else {
-        "".to_string()
-    };
-    let text1 = vec![
-        text::Line::from(format!("IPv4: {}", ipv4_addr)),
-        text::Line::from(format!("IPv6: {}", ipv6_addr)),
-    ];
-    let title = format!(
-        "Default Interface: [{}] {}",
-        app.netstat_data.default_interface.index, app.netstat_data.default_interface.name
-    );
-    let block1 = Block::default().borders(Borders::ALL).title(title);
-    let paragraph1 = Paragraph::new(text1)
-        .block(block1)
-        .wrap(Wrap { trim: true });
-    f.render_widget(paragraph1, chunks[0]);
-
     // Draw total ingress
     let ingress_packets: String = if app.config.display.show_bandwidth {
         app.netstat_data.traffic.formatted_ingress_packets_per_sec()
@@ -99,17 +69,17 @@ fn draw_summary(f: &mut Frame, app: &mut App, area: Rect) {
     } else {
         app.netstat_data.traffic.formatted_received_bytes()
     };
-    let text2 = vec![
+    let ingress_text = vec![
         text::Line::from(format!("Packets: {}", ingress_packets)),
         text::Line::from(format!("Bytes: {}", ingress_traffic)),
     ];
-    let block2 = Block::default()
+    let ingress_block = Block::default()
         .borders(Borders::ALL)
-        .title("Total Ingress");
-    let paragraph2 = Paragraph::new(text2)
-        .block(block2)
+        .title("↓ Total Ingress");
+    let ingress_paragraph = Paragraph::new(ingress_text)
+        .block(ingress_block)
         .wrap(Wrap { trim: true });
-    f.render_widget(paragraph2, chunks[1]);
+    f.render_widget(ingress_paragraph, chunks[0]);
 
     // Draw total egress
     let egress_packets: String = if app.config.display.show_bandwidth {
@@ -122,15 +92,15 @@ fn draw_summary(f: &mut Frame, app: &mut App, area: Rect) {
     } else {
         app.netstat_data.traffic.formatted_sent_bytes()
     };
-    let text3 = vec![
+    let eggress_text = vec![
         text::Line::from(format!("Packets: {}", egress_packets)),
         text::Line::from(format!("Bytes: {}", eggress_traffic)),
     ];
-    let block3 = Block::default().borders(Borders::ALL).title("Total Egress");
-    let paragraph3 = Paragraph::new(text3)
-        .block(block3)
+    let eggress_block = Block::default().borders(Borders::ALL).title("↑ Total Egress");
+    let eggress_paragraph = Paragraph::new(eggress_text)
+        .block(eggress_block)
         .wrap(Wrap { trim: true });
-    f.render_widget(paragraph3, chunks[2]);
+    f.render_widget(eggress_paragraph, chunks[1]);
 }
 
 fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
