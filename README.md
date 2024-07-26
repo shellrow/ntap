@@ -11,6 +11,7 @@ Real-time network utilization monitoring tool.
 ![image](resources/ss/ntap-ss-overview.png)  
 
 ## Features
+- **Live Packet Capture**: Track live network packet data flow.
 - **Real-time Monitoring**: Track network utilization as it happens.
 - **Connection Management**: Analyze active connections quickly and effectively.
 - **Interface and Routing Insights**: Get detailed views of network interfaces and routing tables.
