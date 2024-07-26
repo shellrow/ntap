@@ -3,7 +3,7 @@
 [license-badge]: https://img.shields.io/crates/l/ntap.svg
 
 # ntap [![Crates.io][crates-badge]][crates-url] ![License][license-badge]
-Real-time network utilization monitoring tool.  
+Network traffic monitor/analyzer, for Linux, macOS, and Windows.
 
 ## Overview
 **ntap** provides comprehensive insights into your network's activity, enabling users to monitor traffic, manage connections, and view network configurations with ease.
