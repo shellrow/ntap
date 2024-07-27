@@ -51,7 +51,7 @@ impl<'a> App<'a> {
             title,
             should_pause: false,
             should_quit: false,
-            tabs: TabsState::new(vec!["LiveCapture"]),
+            tabs: TabsState::new(vec!["PacketCapture"]),
             talbe_state: TableState::default(),
             row_selecting: false,
             packets: Vec::new(),
