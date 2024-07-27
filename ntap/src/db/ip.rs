@@ -2,8 +2,7 @@ use crate::db;
 use rangemap::RangeInclusiveMap;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
-    net::{IpAddr, Ipv4Addr, Ipv6Addr},
+    collections::HashMap, f32::consts::E, net::{IpAddr, Ipv4Addr, Ipv6Addr}
 };
 
 /// In-memory IP database with range map and hash map
@@ -28,6 +27,7 @@ impl IpDatabase {
             autonomous_map: HashMap::new(),
         }
     }
+    #[cfg(feature = "bundle")]
     pub fn load() -> Result<IpDatabase, Box<dyn std::error::Error>> {
         let mut ip_db = IpDatabase::new();
         ip_db.load_ipv4_country_map()?;
@@ -36,6 +36,17 @@ impl IpDatabase {
         ip_db.load_ipv6_asn_map()?;
         ip_db.load_country_map()?;
         ip_db.load_autonomous_map()?;
+        Ok(ip_db)
+    }
+    #[cfg(not(feature = "bundle"))]
+    pub fn load() -> Result<IpDatabase, Box<dyn std::error::Error>> {
+        let mut ip_db = IpDatabase::new();
+        ip_db.load_ipv4_country_file()?;
+        ip_db.load_ipv6_country_file()?;
+        ip_db.load_ipv4_asn_file()?;
+        ip_db.load_ipv6_asn_file()?;
+        ip_db.load_country_file()?;
+        ip_db.load_autonomous_file()?;
         Ok(ip_db)
     }
     pub fn load_ipv4_country_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -60,6 +71,102 @@ impl IpDatabase {
     }
     pub fn load_autonomous_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.autonomous_map = ntap_db_as::get_map();
+        Ok(())
+    }
+    pub fn load_ipv4_country_file(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        match crate::sys::get_database_dir_path() {
+            Some(mut db_dir) => {
+                db_dir.push(ntap_db_ipv4_country::IPV4_COUNTRY_BIN_NAME);
+                self.ipv4_country_map = ntap_db_ipv4_country::get_map_from_file(db_dir);
+            }
+            None => {
+                eprintln!("Error: Could not get database directory path");
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Could not get database directory path",
+                )));
+            }
+        }
+        Ok(())
+    }
+    pub fn load_ipv6_country_file(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        match crate::sys::get_database_dir_path() {
+            Some(mut db_dir) => {
+                db_dir.push(ntap_db_ipv6_country::IPV6_COUNTRY_BIN_NAME);
+                self.ipv6_country_map = ntap_db_ipv6_country::get_map_from_file(db_dir);
+            }
+            None => {
+                eprintln!("Error: Could not get database directory path");
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Could not get database directory path",
+                )));
+            }
+        }
+        Ok(())
+    }
+    pub fn load_ipv4_asn_file(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        match crate::sys::get_database_dir_path() {
+            Some(mut db_dir) => {
+                db_dir.push(ntap_db_ipv4_asn::IPV4_ASN_BIN_NAME);
+                self.ipv4_asn_map = ntap_db_ipv4_asn::get_map_from_file(db_dir);
+            }
+            None => {
+                eprintln!("Error: Could not get database directory path");
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Could not get database directory path",
+                )));
+            }
+        }
+        Ok(())
+    }
+    pub fn load_ipv6_asn_file(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        match crate::sys::get_database_dir_path() {
+            Some(mut db_dir) => {
+                db_dir.push(ntap_db_ipv6_asn::IPV6_ASN_BIN_NAME);
+                self.ipv6_asn_map = ntap_db_ipv6_asn::get_map_from_file(db_dir);
+            }
+            None => {
+                eprintln!("Error: Could not get database directory path");
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Could not get database directory path",
+                )));
+            }
+        }
+        Ok(())
+    }
+    pub fn load_country_file(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        match crate::sys::get_database_dir_path() {
+            Some(mut db_dir) => {
+                db_dir.push(ntap_db_country::COUNTRY_BIN_NAME);
+                self.country_map = ntap_db_country::get_map_from_file(db_dir);
+            }
+            None => {
+                eprintln!("Error: Could not get database directory path");
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Could not get database directory path",
+                )));
+            }
+        }
+        Ok(())
+    }
+    pub fn load_autonomous_file(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        match crate::sys::get_database_dir_path() {
+            Some(mut db_dir) => {
+                db_dir.push(ntap_db_as::AS_BIN_NAME);
+                self.autonomous_map = ntap_db_as::get_map_from_file(db_dir);
+            }
+            None => {
+                eprintln!("Error: Could not get database directory path");
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Could not get database directory path",
+                )));
+            }
+        }
         Ok(())
     }
     pub fn get_ipv4_info(&self, ipv4_addr: Ipv4Addr) -> Option<IpInfo> {

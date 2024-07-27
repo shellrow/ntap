@@ -79,3 +79,32 @@ pub fn get_download_dir_path() -> Option<PathBuf> {
         None => None,
     }
 }
+
+pub fn get_database_dir_path() -> Option<PathBuf> {
+    match get_config_dir_path() {
+        Some(mut path) => {
+            path.push("db");
+            if !path.exists() {
+                match std::fs::create_dir_all(&path) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        thread_log!(error, "{:?}", e);
+                        return None;
+                    }
+                }
+            }
+            Some(path)
+        }
+        None => None,
+    }
+}
+
+pub fn get_db_file_path(file_name: &str) -> Option<PathBuf> {
+    match get_database_dir_path() {
+        Some(mut path) => {
+            path.push(file_name);
+            Some(path)
+        }
+        None => None,
+    }
+}

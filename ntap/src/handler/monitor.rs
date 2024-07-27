@@ -9,13 +9,17 @@ use std::thread;
 
 use clap::ArgMatches;
 
+#[cfg(not(feature = "bundle"))]
+use inquire::Confirm;
+
 pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     // Check .ntap directory
     match crate::sys::get_config_dir_path() {
         Some(_config_dir) => {}
         None => {
-            eprintln!("Error: Could not get config directory path");
-            return Ok(());
+            let err_msg = "Could not get config directory path";
+            log::error!("{err_msg}");
+            return Err(err_msg.into());
         }
     }
 
@@ -23,8 +27,29 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     match crate::sys::check_deps() {
         Ok(_) => {}
         Err(e) => {
-            eprintln!("Error: {:?}", e);
-            return Ok(());
+            log::error!("Error: {:?}", e);
+            return Err(e);
+        }
+    }
+
+    // Check Database files
+    #[cfg(not(feature = "bundle"))]
+    match crate::deps::check_db_files() {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("{}", e.to_string());
+            let ans: bool = Confirm::new(
+                "ntap databases are missing. Do you want to download them now?",
+            )
+            .prompt()
+            .unwrap_or(false);
+            if ans { 
+                crate::handler::update::download_db_files()?;
+                log::info!("Successfully downloaded ntap databases. Please restart ntap.");
+                return Ok(());
+            }else{
+                return Err(e.to_string().into());
+            }
         }
     }
 

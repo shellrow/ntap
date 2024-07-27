@@ -4,6 +4,7 @@ pub mod live;
 pub mod monitor;
 pub mod route;
 pub mod socket;
+pub mod update;
 
 pub enum AppCommands {
     Live,
@@ -13,6 +14,7 @@ pub enum AppCommands {
     Route,
     Socket,
     IpInfo,
+    Update,
     Default
 }
 
@@ -26,6 +28,7 @@ impl AppCommands {
             "route" => AppCommands::Route,
             "socket" => AppCommands::Socket,
             "ipinfo" => AppCommands::IpInfo,
+            "update" => AppCommands::Update,
             _ => AppCommands::Default,
         }
     }

@@ -40,24 +40,35 @@ ipnet = "2.5"
 ipstruct = "0.2"
 home = "0.5"
 termtree = "0.5"
-ntap-db-as = { path = "../ntap-db/as", version = "0.5.0" }
-ntap-db-country = { path = "../ntap-db/country", version = "0.5.0" }
-ntap-db-ipv4-asn = { path = "../ntap-db/ipv4-asn", version = "0.5.0" }
-ntap-db-ipv4-country = { path = "../ntap-db/ipv4-country", version = "0.5.0" }
-ntap-db-ipv6-asn = { path = "../ntap-db/ipv6-asn", version = "0.5.0" }
-ntap-db-ipv6-country = { path = "../ntap-db/ipv6-country", version = "0.5.0" }
-ntap-db-oui = { path = "../ntap-db/oui", version = "0.5.0" }
-ntap-db-tcp-service = { path = "../ntap-db/tcp-service", version = "0.5.0" }
-ntap-db-udp-service = { path = "../ntap-db/udp-service", version = "0.5.0" }
-
-[target.'cfg(windows)'.dependencies]
 indicatif = "0.16"
 inquire = "0.6"
+ntap-db-as = { path = "../ntap-db/as", version = "0.5.0", default-features = false}
+ntap-db-country = { path = "../ntap-db/country", version = "0.5.0", default-features = false }
+ntap-db-ipv4-asn = { path = "../ntap-db/ipv4-asn", version = "0.5.0", default-features = false }
+ntap-db-ipv4-country = { path = "../ntap-db/ipv4-country", version = "0.5.0", default-features = false }
+ntap-db-ipv6-asn = { path = "../ntap-db/ipv6-asn", version = "0.5.0", default-features = false }
+ntap-db-ipv6-country = { path = "../ntap-db/ipv6-country", version = "0.5.0", default-features = false }
+ntap-db-oui = { path = "../ntap-db/oui", version = "0.5.0", default-features = false }
+ntap-db-tcp-service = { path = "../ntap-db/tcp-service", version = "0.5.0", default-features = false }
+ntap-db-udp-service = { path = "../ntap-db/udp-service", version = "0.5.0", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
 winreg = "0.50"
 sha2 = "0.10"
 zip = "0.6"
 privilege = "0.3"
 
 [features]
-default = ["bundle"]
-bundle = []
+default = []
+bundle = [
+    "ntap-db-as/bundle",
+    "ntap-db-as/bundle",
+    "ntap-db-country/bundle",
+    "ntap-db-ipv4-asn/bundle",
+    "ntap-db-ipv4-country/bundle",
+    "ntap-db-ipv6-asn/bundle",
+    "ntap-db-ipv6-country/bundle",
+    "ntap-db-oui/bundle",
+    "ntap-db-tcp-service/bundle",
+    "ntap-db-udp-service/bundle",
+]

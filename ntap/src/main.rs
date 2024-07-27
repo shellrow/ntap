@@ -30,6 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         AppCommands::Route => handler::route::show_routes(),
         AppCommands::Socket => handler::socket::show_socket_info(),
         AppCommands::IpInfo => handler::ip_info::show_public_ip_info(),
+        AppCommands::Update => handler::update::download_db_files(),
         AppCommands::Default => {
             // If no subcommand is specified, enter live mode by default
             handler::live::live_capture(&args)
@@ -136,6 +137,10 @@ fn parse_args() -> ArgMatches {
         // Sub-command for show public IP info
         .subcommand(Command::new("ipinfo")
             .about("Show public IP info")
+        )
+        // Sub-command for update ntap database
+        .subcommand(Command::new("update")
+            .about("Update ntap database")
         )
         ;
     app.get_matches()
