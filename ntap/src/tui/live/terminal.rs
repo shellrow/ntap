@@ -4,8 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{net::packet::PacketStorage, sys};
 use crate::config::AppConfig;
+use crate::{net::packet::PacketStorage, sys};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,

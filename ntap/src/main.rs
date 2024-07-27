@@ -1,4 +1,3 @@
-mod tui;
 mod config;
 mod db;
 mod deps;
@@ -9,6 +8,7 @@ mod process;
 mod sys;
 mod thread_log;
 mod time;
+mod tui;
 mod util;
 
 use clap::{crate_description, crate_name, crate_version, value_parser};

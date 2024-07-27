@@ -7,8 +7,6 @@ pub fn node_label(label: &str, value: Option<&str>, delimiter: Option<&str>) -> 
             };
             format!("{}{} {}", label, delimiter, value)
         }
-        None => {
-            label.to_string()
-        }
+        None => label.to_string(),
     }
 }

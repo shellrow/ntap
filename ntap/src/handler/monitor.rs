@@ -38,16 +38,15 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
         Ok(_) => {}
         Err(e) => {
             log::error!("{}", e.to_string());
-            let ans: bool = Confirm::new(
-                "ntap databases are missing. Do you want to download them now?",
-            )
-            .prompt()
-            .unwrap_or(false);
-            if ans { 
+            let ans: bool =
+                Confirm::new("ntap databases are missing. Do you want to download them now?")
+                    .prompt()
+                    .unwrap_or(false);
+            if ans {
                 crate::handler::update::download_db_files()?;
                 println!("Please restart ntap");
                 return Ok(());
-            }else{
+            } else {
                 return Err(e.to_string().into());
             }
         }

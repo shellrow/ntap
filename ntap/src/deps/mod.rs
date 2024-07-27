@@ -32,8 +32,8 @@ impl fmt::Display for DepsError {
 // Check Database files
 pub fn check_db_files() -> Result<(), DepsError> {
     let db_files = vec![
-        ntap_db_as::AS_BIN_NAME, 
-        ntap_db_country::COUNTRY_BIN_NAME, 
+        ntap_db_as::AS_BIN_NAME,
+        ntap_db_country::COUNTRY_BIN_NAME,
         ntap_db_ipv4_asn::IPV4_ASN_BIN_NAME,
         ntap_db_ipv4_country::IPV4_COUNTRY_BIN_NAME,
         ntap_db_ipv6_asn::IPV6_ASN_BIN_NAME,
@@ -41,7 +41,7 @@ pub fn check_db_files() -> Result<(), DepsError> {
         ntap_db_oui::OUI_BIN_NAME,
         ntap_db_tcp_service::TCP_SERVICE_BIN_NAME,
         ntap_db_udp_service::UDP_SERVICE_BIN_NAME,
-        ];
+    ];
     for file in db_files {
         match crate::sys::get_db_file_path(file) {
             Some(file_path) => {

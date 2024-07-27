@@ -4,8 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{tui::monitor::app::App, sys, tui::monitor::ui};
 use crate::{config::AppConfig, net::stat::NetStatStrage};
+use crate::{sys, tui::monitor::app::App, tui::monitor::ui};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,

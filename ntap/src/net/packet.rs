@@ -195,7 +195,7 @@ impl PacketStorage {
             max_capacity: capacity,
         }
     }
-    
+
     pub fn set_max_capacity(&mut self, max_capacity: usize) {
         self.max_capacity = max_capacity;
     }

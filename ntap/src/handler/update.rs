@@ -1,7 +1,14 @@
-use std::{fs::File, path::{Path, PathBuf}};
 use crate::{config::AppConfig, thread_log};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+};
 
-fn download_file(url: &str, save_dir_path: PathBuf, file_name: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+fn download_file(
+    url: &str,
+    save_dir_path: PathBuf,
+    file_name: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // Check and create download dir
     if !save_dir_path.exists() {
         std::fs::create_dir_all(&save_dir_path)?;
@@ -84,63 +91,99 @@ pub fn download_db_files() -> Result<(), Box<dyn std::error::Error>> {
 
     let database_dir = crate::sys::get_database_dir_path().unwrap();
     // AS
-    match download_file(ntap_db_as::AS_R2_URL, database_dir.clone(), ntap_db_as::AS_BIN_NAME) {
-        Ok(_) => {},
+    match download_file(
+        ntap_db_as::AS_R2_URL,
+        database_dir.clone(),
+        ntap_db_as::AS_BIN_NAME,
+    ) {
+        Ok(_) => {}
         Err(e) => {
             thread_log!(error, "{:?}", e);
         }
     }
     // Country
-    match download_file(ntap_db_country::COUNTRY_R2_URL, database_dir.clone(), ntap_db_country::COUNTRY_BIN_NAME) {
+    match download_file(
+        ntap_db_country::COUNTRY_R2_URL,
+        database_dir.clone(),
+        ntap_db_country::COUNTRY_BIN_NAME,
+    ) {
         Ok(_) => {}
         Err(e) => {
             thread_log!(error, "{:?}", e);
         }
     }
     // IPv4 ASN
-    match download_file(ntap_db_ipv4_asn::IPV4_ASN_R2_URL, database_dir.clone(), ntap_db_ipv4_asn::IPV4_ASN_BIN_NAME) {
+    match download_file(
+        ntap_db_ipv4_asn::IPV4_ASN_R2_URL,
+        database_dir.clone(),
+        ntap_db_ipv4_asn::IPV4_ASN_BIN_NAME,
+    ) {
         Ok(_) => {}
         Err(e) => {
             thread_log!(error, "{:?}", e);
         }
     }
     // IPv4 Country
-    match download_file(ntap_db_ipv4_country::IPV4_COUNTRY_R2_URL, database_dir.clone(), ntap_db_ipv4_country::IPV4_COUNTRY_BIN_NAME) {
+    match download_file(
+        ntap_db_ipv4_country::IPV4_COUNTRY_R2_URL,
+        database_dir.clone(),
+        ntap_db_ipv4_country::IPV4_COUNTRY_BIN_NAME,
+    ) {
         Ok(_) => {}
         Err(e) => {
             thread_log!(error, "{:?}", e);
         }
     }
     // IPv6 ASN
-    match download_file(ntap_db_ipv6_asn::IPV6_ASN_R2_URL, database_dir.clone(), ntap_db_ipv6_asn::IPV6_ASN_BIN_NAME) {
+    match download_file(
+        ntap_db_ipv6_asn::IPV6_ASN_R2_URL,
+        database_dir.clone(),
+        ntap_db_ipv6_asn::IPV6_ASN_BIN_NAME,
+    ) {
         Ok(_) => {}
         Err(e) => {
             thread_log!(error, "{:?}", e);
         }
     }
     // IPv6 Country
-    match download_file(ntap_db_ipv6_country::IPV6_COUNTRY_R2_URL, database_dir.clone(), ntap_db_ipv6_country::IPV6_COUNTRY_BIN_NAME) {
+    match download_file(
+        ntap_db_ipv6_country::IPV6_COUNTRY_R2_URL,
+        database_dir.clone(),
+        ntap_db_ipv6_country::IPV6_COUNTRY_BIN_NAME,
+    ) {
         Ok(_) => {}
         Err(e) => {
             thread_log!(error, "{:?}", e);
         }
     }
     // OUI
-    match download_file(ntap_db_oui::OUI_R2_URL, database_dir.clone(), ntap_db_oui::OUI_BIN_NAME){
+    match download_file(
+        ntap_db_oui::OUI_R2_URL,
+        database_dir.clone(),
+        ntap_db_oui::OUI_BIN_NAME,
+    ) {
         Ok(_) => {}
         Err(e) => {
             thread_log!(error, "{:?}", e);
         }
     }
     // TCP Service
-    match download_file(ntap_db_tcp_service::TCP_SERVICE_R2_URL, database_dir.clone(), ntap_db_tcp_service::TCP_SERVICE_BIN_NAME) {
+    match download_file(
+        ntap_db_tcp_service::TCP_SERVICE_R2_URL,
+        database_dir.clone(),
+        ntap_db_tcp_service::TCP_SERVICE_BIN_NAME,
+    ) {
         Ok(_) => {}
         Err(e) => {
             thread_log!(error, "{:?}", e);
         }
     }
     // UDP Service
-    match download_file(ntap_db_udp_service::UDP_SERVICE_R2_URL, database_dir.clone(), ntap_db_udp_service::UDP_SERVICE_BIN_NAME) {
+    match download_file(
+        ntap_db_udp_service::UDP_SERVICE_R2_URL,
+        database_dir.clone(),
+        ntap_db_udp_service::UDP_SERVICE_BIN_NAME,
+    ) {
         Ok(_) => {}
         Err(e) => {
             thread_log!(error, "{:?}", e);

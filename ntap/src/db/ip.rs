@@ -2,7 +2,9 @@ use crate::db;
 use rangemap::RangeInclusiveMap;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap, f32::consts::E, net::{IpAddr, Ipv4Addr, Ipv6Addr}
+    collections::HashMap,
+    f32::consts::E,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
 };
 
 /// In-memory IP database with range map and hash map
