@@ -45,7 +45,7 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
             .unwrap_or(false);
             if ans { 
                 crate::handler::update::download_db_files()?;
-                log::info!("Successfully downloaded ntap databases. Please restart ntap.");
+                println!("Please restart ntap");
                 return Ok(());
             }else{
                 return Err(e.to_string().into());
