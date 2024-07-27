@@ -3,14 +3,13 @@
 [license-badge]: https://img.shields.io/crates/l/ntap.svg
 
 # ntap [![Crates.io][crates-badge]][crates-url] ![License][license-badge]
-Real-time network utilization monitoring tool.  
+Network traffic monitor/analyzer, for Linux, macOS, and Windows.
 
 ## Overview
 **ntap** provides comprehensive insights into your network's activity, enabling users to monitor traffic, manage connections, and view network configurations with ease.
 
-![image](resources/ss/ntap-ss-overview.png)  
-
 ## Features
+- **Live Packet Capture**: Track live network packet data flow.
 - **Real-time Monitoring**: Track network utilization as it happens.
 - **Connection Management**: Analyze active connections quickly and effectively.
 - **Interface and Routing Insights**: Get detailed views of network interfaces and routing tables.
@@ -128,3 +127,10 @@ sudo chmod-bpf install
 
 ### License
 `ntap` is released under the MIT License. See the LICENSE file for more details.
+
+
+## Screenshots
+![image](resources/ss/ntap-ss-live-capture.png)  
+![image](resources/ss/ntap-ss-overview.png)  
+![image](resources/ss/ntap-ss-remote-host.png)  
+![image](resources/ss/ntap-ss-connection.png)  

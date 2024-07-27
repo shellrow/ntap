@@ -144,6 +144,16 @@ pub fn get_usable_interfaces() -> Vec<Interface> {
     usable_interfaces
 }
 
+pub fn get_interfaces_by_name(names: &Vec<String>) -> Vec<Interface> {
+    let mut interfaces: Vec<Interface> = Vec::new();
+    for iface in nex::net::interface::get_interfaces() {
+        if names.contains(&iface.name) {
+            interfaces.push(iface);
+        }
+    }
+    interfaces
+}
+
 pub fn get_interface_macaddr(iface: &Interface) -> MacAddr {
     match &iface.mac_addr {
         Some(mac_addr) => mac_addr.clone(),

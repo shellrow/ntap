@@ -1,6 +1,12 @@
 use crate::sys;
+use nex::packet::ethernet::EtherType;
 use nex::packet::frame::{DatalinkLayer, IpLayer, TransportLayer};
+use nex::packet::ip::IpNextLevelProtocol;
+use nex::packet::{arp, icmp};
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PacketFrame {
@@ -55,5 +61,201 @@ impl PacketFrame {
             packet_len: frame.packet_len,
             timestamp: sys::get_sysdate(),
         }
+    }
+    pub fn get_time(&self) -> String {
+        let datetime_vec: Vec<&str> = self.timestamp.split('T').collect::<Vec<&str>>();
+        let timestamp: String = if datetime_vec.len() > 1 {
+            datetime_vec[1].to_string()
+        } else {
+            self.timestamp.clone()
+        };
+        // Remove UTC offset that start from + or -
+        let datetime_vec = timestamp.split('+').collect::<Vec<&str>>();
+        let timestamp: String = if datetime_vec.len() > 1 {
+            datetime_vec[0].to_string()
+        } else if datetime_vec.len() > 1 {
+            datetime_vec[0].to_string()
+        } else {
+            timestamp
+        };
+        timestamp
+    }
+    // Get most high level protocol
+    pub fn get_protocol(&self) -> String {
+        // Transport layer
+        if let Some(transport) = &self.transport {
+            if let Some(tcp) = &transport.tcp {
+                return "TCP".to_string();
+            }
+            if let Some(udp) = &transport.udp {
+                return "UDP".to_string();
+            }
+        }
+        // IP layer
+        if let Some(ip) = &self.ip {
+            if let Some(icmp) = &ip.icmp {
+                return "ICMP".to_string();
+            }
+            if let Some(icmpv6) = &ip.icmpv6 {
+                return "ICMPv6".to_string();
+            }
+            if let Some(ipv4) = &ip.ipv4 {
+                return ipv4.next_level_protocol.as_str().to_string();
+            }
+            if let Some(ipv6) = &ip.ipv6 {
+                return ipv6.next_header.as_str().to_string();
+            }
+        }
+        // Datalink layer
+        if let Some(datalink) = &self.datalink {
+            if let Some(arp) = &datalink.arp {
+                return "ARP".to_string();
+            }
+            if let Some(ethernet) = &datalink.ethernet {
+                return ethernet.ethertype.name().to_string();
+            }
+        }
+        "Unknown".to_string()
+    }
+    pub fn get_src_addr(&self) -> String {
+        if let Some(ip) = &self.ip {
+            if let Some(ipv4) = &ip.ipv4 {
+                return ipv4.source.to_string();
+            }
+            if let Some(ipv6) = &ip.ipv6 {
+                return ipv6.source.to_string();
+            }
+        }
+        if let Some(datalink) = &self.datalink {
+            if let Some(ethernet) = &datalink.ethernet {
+                return ethernet.source.to_string();
+            }
+        }
+        "Unknown".to_string()
+    }
+    pub fn get_dst_addr(&self) -> String {
+        if let Some(ip) = &self.ip {
+            if let Some(ipv4) = &ip.ipv4 {
+                return ipv4.destination.to_string();
+            }
+            if let Some(ipv6) = &ip.ipv6 {
+                return ipv6.destination.to_string();
+            }
+        }
+        if let Some(datalink) = &self.datalink {
+            if let Some(ethernet) = &datalink.ethernet {
+                return ethernet.destination.to_string();
+            }
+        }
+        "Unknown".to_string()
+    }
+    pub fn get_src_port(&self) -> String {
+        if let Some(transport) = &self.transport {
+            if let Some(tcp) = &transport.tcp {
+                return tcp.source.to_string();
+            }
+            if let Some(udp) = &transport.udp {
+                return udp.source.to_string();
+            }
+        }
+        String::new()
+    }
+    pub fn get_dst_port(&self) -> String {
+        if let Some(transport) = &self.transport {
+            if let Some(tcp) = &transport.tcp {
+                return tcp.destination.to_string();
+            }
+            if let Some(udp) = &transport.udp {
+                return udp.destination.to_string();
+            }
+        }
+        String::new()
+    }
+}
+
+pub struct PacketStorage {
+    storage: Arc<RwLock<VecDeque<PacketFrame>>>,
+    capture_counter: Arc<AtomicUsize>,
+    max_capacity: usize,
+}
+
+impl PacketStorage {
+    pub fn new() -> Self {
+        PacketStorage {
+            storage: Arc::new(RwLock::new(VecDeque::new())),
+            capture_counter: Arc::new(AtomicUsize::new(1)),
+            max_capacity: u8::MAX as usize,
+        }
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        PacketStorage {
+            storage: Arc::new(RwLock::new(VecDeque::new())),
+            capture_counter: Arc::new(AtomicUsize::new(1)),
+            max_capacity: capacity,
+        }
+    }
+    
+    pub fn set_max_capacity(&mut self, max_capacity: usize) {
+        self.max_capacity = max_capacity;
+    }
+
+    pub fn generate_capture_no(&self) -> usize {
+        self.capture_counter.fetch_add(1, Ordering::SeqCst)
+    }
+
+    pub fn add_packet(&self, packet: PacketFrame) {
+        match self.storage.try_write() {
+            Ok(mut storage) => {
+                // If the storage is full, remove the oldest packet
+                if storage.len() == self.max_capacity {
+                    storage.pop_front();
+                }
+                storage.push_back(packet);
+            }
+            Err(_) => {
+                // TODO: Log error or return error
+            }
+        }
+    }
+
+    pub fn get_packets(&self) -> Vec<PacketFrame> {
+        match self.storage.try_read() {
+            Ok(storage) => storage.iter().cloned().collect(),
+            Err(_) => {
+                // TODO: Log error or return error
+                Vec::new()
+            }
+        }
+    }
+}
+
+pub fn get_ethertype_from_str(ethertype_name: &str) -> Option<EtherType> {
+    let name = ethertype_name.to_lowercase();
+    // Currently, EtherType not support from_str, so we need to match it manually
+    match name.as_str() {
+        "arp" => Some(EtherType::Arp),
+        "rarp" => Some(EtherType::Rarp),
+        "aarp" => Some(EtherType::Aarp),
+        "ipv4" => Some(EtherType::Ipv4),
+        "ipv6" => Some(EtherType::Ipv6),
+        "vlan" => Some(EtherType::Vlan),
+        "mpls" => Some(EtherType::Mpls),
+        "wakeonlan" => Some(EtherType::WakeOnLan),
+        "rldp" => Some(EtherType::Rldp),
+        "lldp" => Some(EtherType::Lldp),
+        _ => None,
+    }
+}
+
+pub fn get_ip_next_protocol_from_str(protocol_name: &str) -> Option<IpNextLevelProtocol> {
+    let name = protocol_name.to_lowercase();
+    // Currently, IpNextLevelProtocol not support from_str, so we need to match it manually
+    match name.as_str() {
+        "icmp" => Some(IpNextLevelProtocol::Icmp),
+        "icmpv6" => Some(IpNextLevelProtocol::Icmpv6),
+        "tcp" => Some(IpNextLevelProtocol::Tcp),
+        "udp" => Some(IpNextLevelProtocol::Udp),
+        _ => None,
     }
 }

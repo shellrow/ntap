@@ -9,13 +9,17 @@ use std::thread;
 
 use clap::ArgMatches;
 
+#[cfg(not(feature = "bundle"))]
+use inquire::Confirm;
+
 pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     // Check .ntap directory
     match crate::sys::get_config_dir_path() {
         Some(_config_dir) => {}
         None => {
-            eprintln!("Error: Could not get config directory path");
-            return Ok(());
+            let err_msg = "Could not get config directory path";
+            log::error!("{err_msg}");
+            return Err(err_msg.into());
         }
     }
 
@@ -23,16 +27,37 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     match crate::sys::check_deps() {
         Ok(_) => {}
         Err(e) => {
-            eprintln!("Error: {:?}", e);
-            return Ok(());
+            log::error!("Error: {:?}", e);
+            return Err(e);
+        }
+    }
+
+    // Check Database files
+    #[cfg(not(feature = "bundle"))]
+    match crate::deps::check_db_files() {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("{}", e.to_string());
+            let ans: bool = Confirm::new(
+                "ntap databases are missing. Do you want to download them now?",
+            )
+            .prompt()
+            .unwrap_or(false);
+            if ans { 
+                crate::handler::update::download_db_files()?;
+                println!("Please restart ntap");
+                return Ok(());
+            }else{
+                return Err(e.to_string().into());
+            }
         }
     }
 
     // Load AppConfig
     let mut config = AppConfig::load();
 
-    if app.contains_id("tick_rate") {
-        config.display.tick_rate = *app.get_one("tick_rate").unwrap_or(&1000);
+    if app.contains_id("tickrate") {
+        config.display.tick_rate = *app.get_one("tickrate").unwrap_or(&1000);
     }
 
     // Init logger
@@ -148,9 +173,9 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     // Move cursor to top left corner
     crossterm::execute!(stdout, crossterm::cursor::MoveTo(0, 0))?;
 
-    crate::terminal::run(
+    crate::tui::monitor::terminal::run(
         config,
-        app.contains_id("enhanced_graphics"),
+        app.contains_id("enhanced-graphics"),
         &mut netstat_strage_ui,
     )?;
     Ok(())

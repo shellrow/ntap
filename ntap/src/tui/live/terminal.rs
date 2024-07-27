@@ -4,8 +4,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{app::App, sys, ui};
-use crate::{config::AppConfig, net::stat::NetStatStrage};
+use crate::{net::packet::PacketStorage, sys};
+use crate::config::AppConfig;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
@@ -14,10 +14,13 @@ use crossterm::{
 use ratatui::prelude::*;
 use std::sync::Arc;
 
+use super::app::App;
+use super::ui;
+
 pub fn run(
     app_config: AppConfig,
     enhanced_graphics: bool,
-    netstat_strage: &mut Arc<NetStatStrage>,
+    packet_strage: &Arc<PacketStorage>,
 ) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
@@ -29,7 +32,7 @@ pub fn run(
     // create app and run it
     let title = sys::get_app_title();
     let app = App::new(&title, enhanced_graphics, app_config);
-    let res = run_app(&mut terminal, app, netstat_strage);
+    let res = run_app(&mut terminal, app, packet_strage);
 
     // restore terminal
     disable_raw_mode()?;
@@ -50,21 +53,14 @@ pub fn run(
 fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     mut app: App,
-    netstat_strage: &mut Arc<NetStatStrage>,
+    packet_strage: &Arc<PacketStorage>,
 ) -> io::Result<()> {
     let tick_rate = Duration::from_millis(app.config.display.tick_rate);
-    let entry_ttl = Duration::from_millis(app.config.network.entry_ttl);
     let mut last_tick = Instant::now();
-    let mut last_clear = Instant::now();
     loop {
-        if last_clear.elapsed() >= entry_ttl {
-            app.netstat_data.remove_old_entries(entry_ttl);
-            last_clear = Instant::now();
-        }
-
         if last_tick.elapsed() >= tick_rate {
             if !app.should_pause {
-                app.on_tick(netstat_strage.clone_data_and_reset());
+                app.on_tick(packet_strage.get_packets());
             }
             last_tick = Instant::now();
         }

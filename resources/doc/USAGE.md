@@ -11,13 +11,18 @@ ntap [OPTIONS] [COMMAND]
 ```
 
 ## Default Behavior
-If no options or commands are specified, ntap will automatically enter the monitor mode:
+If no options or commands are specified, ntap will automatically enter the live capture mode:
 ```bash
 ntap
 ```
-This default mode will continuously display live network usage statistics, providing a quick and easy way to view current network activity without configuring any additional settings.
+This default mode captures packets on all available network interfaces and continuously displays live network packet data flow, providing a quick and easy way to monitor current network activity without the need for additional configuration.
 
 ## Commands
+
+### live: Enters live capture mode to continuously display live network packet data.
+```bash
+ntap live
+```
 
 ### monitor: Enters monitor mode to continuously display live network usage statistics.
 ```bash
@@ -65,14 +70,15 @@ ntap help socket
 ```
 
 ## Options
---tick_rate <duration_ms>: Specifies the time in milliseconds between two updates in monitor mode.
+--tickrate(-r) <duration_ms>: Specifies the time in milliseconds between two updates in monitor mode.
 ```bash
-ntap --tick_rate 1000 monitor
+ntap --tickrate 1000 monitor
+ntap --r 1000 monitor
 ```
 
---enhanced_graphics: Enables the use of Unicode symbols to improve the appearance of the application.
+--enhanced-graphics: Enables the use of Unicode symbols to improve the appearance of the application.
 ```bash
-ntap --enhanced_graphics
+ntap --enhanced-graphics
 ```
 
 -h, --help: Prints help information.

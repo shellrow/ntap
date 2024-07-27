@@ -14,7 +14,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.4.0"
+version = "0.5.0"
 authors = ["shellrow <shellrow@fortnium.com>"]
 
 [workspace.dependencies]
@@ -48,3 +48,4 @@ pr-run-mode = "plan"
 # Whether to install an updater program
 install-updater = false
 include = ["resources/doc/USAGE.md"]
+features = ["bundle"]
