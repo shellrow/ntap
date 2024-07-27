@@ -5,7 +5,11 @@ use std::time::Duration;
 use crate::{
     config::AppConfig,
     net::{
-        host::HostDisplayInfo, packet::{PacketFrame, PacketStorage}, service::ServiceDisplayInfo, socket::SocketDisplayInfo, stat::NetStatData
+        host::HostDisplayInfo,
+        packet::{PacketFrame, PacketStorage},
+        service::ServiceDisplayInfo,
+        socket::SocketDisplayInfo,
+        stat::NetStatData,
     },
     process::ProcessDisplayInfo,
 };

@@ -53,10 +53,7 @@ fn draw_summary(f: &mut Frame, app: &mut App, area: Rect) {
     // Draw network interface
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50),
-        ])
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
     // Draw total ingress
     let ingress_packets: String = if app.config.display.show_bandwidth {
@@ -96,7 +93,9 @@ fn draw_summary(f: &mut Frame, app: &mut App, area: Rect) {
         text::Line::from(format!("Packets: {}", egress_packets)),
         text::Line::from(format!("Bytes: {}", eggress_traffic)),
     ];
-    let eggress_block = Block::default().borders(Borders::ALL).title("↑ Total Egress");
+    let eggress_block = Block::default()
+        .borders(Borders::ALL)
+        .title("↑ Total Egress");
     let eggress_paragraph = Paragraph::new(eggress_text)
         .block(eggress_block)
         .wrap(Wrap { trim: true });

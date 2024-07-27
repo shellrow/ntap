@@ -1,5 +1,5 @@
-use ratatui::{prelude::*, widgets::*};
 use super::app::App;
+use ratatui::{prelude::*, widgets::*};
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
@@ -38,7 +38,9 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         _ => {}
     };
     // Draw footer
-    let footer = format!("Press <Q> to quit, <SPACE> to pause, <Up>/<Down> to scroll, <B> to scroll to the bottom");
+    let footer = format!(
+        "Press <Q> to quit, <SPACE> to pause, <Up>/<Down> to scroll, <B> to scroll to the bottom"
+    );
     let footer = Paragraph::new(text::Line::from(Span::styled(
         footer,
         Style::default().fg(Color::DarkGray),
@@ -105,11 +107,7 @@ fn draw_packet_table(f: &mut Frame, app: &mut App, area: Rect) {
             ])
             .style(Style::new().bold()), //.bottom_margin(1),
         )
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(table_title),
-        )
+        .block(Block::default().borders(Borders::ALL).title(table_title))
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
 

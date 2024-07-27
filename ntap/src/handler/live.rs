@@ -6,9 +6,9 @@ use std::error::Error;
 use std::fs::File;
 use std::net::IpAddr;
 use std::path::Path;
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
-use std::sync::mpsc::{channel, Receiver, Sender};
 
 use clap::ArgMatches;
 use nex::packet::ethernet::EtherType;
@@ -63,7 +63,9 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
                     if let Some(ethertype) = crate::net::packet::get_ethertype_from_str(&protocol) {
                         ethertypes.insert(ethertype);
                     }
-                    if let Some(ip_next_protocol) = crate::net::packet::get_ip_next_protocol_from_str(&protocol) {
+                    if let Some(ip_next_protocol) =
+                        crate::net::packet::get_ip_next_protocol_from_str(&protocol)
+                    {
                         ip_next_protocols.insert(ip_next_protocol);
                     }
                 }
@@ -145,13 +147,15 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     }
     // Start threads
     let mut threads: Vec<thread::JoinHandle<()>> = vec![];
-    let packet_strage: Arc<PacketStorage> = Arc::new(PacketStorage::with_capacity(storage_capacity as usize));
+    let packet_strage: Arc<PacketStorage> =
+        Arc::new(PacketStorage::with_capacity(storage_capacity as usize));
     let packet_strage_ui: Arc<PacketStorage> = Arc::clone(&packet_strage);
     let target_interfaces: Vec<netdev::Interface>;
     if config.network.interfaces.is_empty() {
         target_interfaces = crate::net::interface::get_usable_interfaces();
     } else {
-        target_interfaces = crate::net::interface::get_interfaces_by_name(&config.network.interfaces);
+        target_interfaces =
+            crate::net::interface::get_interfaces_by_name(&config.network.interfaces);
     }
     let mut pcap_thread_index = 0;
     let (tx, rx): (Sender<PacketFrame>, Receiver<PacketFrame>) = channel();
@@ -170,11 +174,7 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
             let pcap_thread = thread::Builder::new().name(thread_name.clone());
             let tx_clone = tx.clone();
             let pcap_handler = pcap_thread.spawn(move || {
-                crate::net::pcap::start_live_capture(
-                    pcap_option,
-                    tx_clone,
-                    iface,
-                );
+                crate::net::pcap::start_live_capture(pcap_option, tx_clone, iface);
             });
             thread_log!(info, "start thread {}", thread_name);
             pcap_thread_index += 1;

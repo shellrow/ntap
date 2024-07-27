@@ -1,7 +1,7 @@
-use std::error::Error;
 use crate::util::tree::node_label;
 use netdev::mac::MacAddr;
 use netdev::Interface;
+use std::error::Error;
 use termtree::Tree;
 
 pub fn show_interfaces() -> Result<(), Box<dyn Error>> {

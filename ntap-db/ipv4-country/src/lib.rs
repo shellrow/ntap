@@ -1,6 +1,6 @@
-use std::{fs, path::PathBuf};
 use rangemap::RangeInclusiveMap;
 use serde::{Deserialize, Serialize};
+use std::{fs, path::PathBuf};
 
 #[cfg(feature = "bundle")]
 pub const IPV4_COUNTRY_BIN: &[u8] = include_bytes!("../resources/ipv4-country.bin");
@@ -29,7 +29,10 @@ pub fn get_map() -> RangeInclusiveMap<u32, String> {
     let mut ipv4_country_map: RangeInclusiveMap<u32, String> = RangeInclusiveMap::new();
     let ipv4_country_vec: Vec<Ipv4Country> = bincode::deserialize(IPV4_COUNTRY_BIN).unwrap();
     for ipv4_country in ipv4_country_vec {
-        ipv4_country_map.insert(ipv4_country.ip_from..=ipv4_country.ip_to, ipv4_country.country_code);
+        ipv4_country_map.insert(
+            ipv4_country.ip_from..=ipv4_country.ip_to,
+            ipv4_country.country_code,
+        );
     }
     ipv4_country_map
 }
@@ -40,7 +43,10 @@ pub fn get_map_from_file(file_path: PathBuf) -> RangeInclusiveMap<u32, String> {
         Ok(f) => {
             let ipv4_country_vec: Vec<Ipv4Country> = bincode::deserialize(&f).unwrap();
             for ipv4_country in ipv4_country_vec {
-                ipv4_country_map.insert(ipv4_country.ip_from..=ipv4_country.ip_to, ipv4_country.country_code);
+                ipv4_country_map.insert(
+                    ipv4_country.ip_from..=ipv4_country.ip_to,
+                    ipv4_country.country_code,
+                );
             }
         }
         Err(e) => {

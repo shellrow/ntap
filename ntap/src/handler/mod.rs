@@ -15,7 +15,7 @@ pub enum AppCommands {
     Socket,
     IpInfo,
     Update,
-    Default
+    Default,
 }
 
 impl AppCommands {
