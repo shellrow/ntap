@@ -40,11 +40,6 @@ ntap monitor
 ntap socket
 ```
 
-For more detailed options for sockets:
-```bash
-ntap socket --help
-```
-
 ### interfaces: Shows all network interfaces.
 ```bash
 ntap interfaces
@@ -70,24 +65,48 @@ ntap ipinfo
 ntap help
 ```
 
-For help on a specific command, such as monitor:
+For help on a specific command, such as live:
 ```bash
-ntap help socket
+ntap help live
 ```
 
 ## Options
---tickrate(-r) <duration_ms>: Specifies the time in milliseconds between two updates in monitor mode.
-```bash
-ntap --tickrate 1000 monitor
-ntap --r 1000 monitor
-```
-
--h, --help: Prints help information.
+Help (`-h`, `--help`): Prints help information.
 ```bash
 ntap --help
 ```
 
--V, --version: Displays the version of the ntap tool.
+Subcommand Help (`-h`, `--help`): Prints subcommand's help information.
+```bash
+ntap live --help
+```
+
+Tick Rate (`-r`, `--tickrate`): Sets the refresh rate in milliseconds.
+```bash
+ntap --tickrate 1000
+```
+
+Interfaces (`-i`, `--interfaces`): Specifies the interfaces by name.
+```bash
+ntap -i eth0,eth1
+```
+
+Protocols (`-P`, `--protocols`): Filters traffic by protocols.
+```bash
+ntap -P tcp,udp
+```
+
+IP Addresses (`-a`, `--ips`): Filters traffic by specific IP addresses.
+```bash
+ntap --ips 1.1.1.1,8.8.8.8
+```
+
+Ports (`-p`, `--ports`): Filters traffic by ports.
+```bash
+ntap -p 80,443
+```
+
+Version (`-V`, `--version`): Displays the version of the ntap.
 ```bash
 ntap --version
 ```
