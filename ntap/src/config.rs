@@ -132,8 +132,8 @@ pub struct DisplayConfig {
 impl DisplayConfig {
     pub fn new() -> DisplayConfig {
         DisplayConfig {
-            top_remote_hosts: 10,
-            connection_count: 10,
+            top_remote_hosts: 20,
+            connection_count: 20,
             tick_rate: 1000,
             show_bandwidth: false,
         }
