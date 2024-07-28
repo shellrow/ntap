@@ -101,6 +101,14 @@ fn parse_args() -> ArgMatches {
         // Sub-command for live mode.
         .subcommand(Command::new("live")
             .about("Start live packet capture. Live mode captures and displays live network packets.")
+            .arg(
+                Arg::new("limit")
+                    .help("Limit the number of packets to display")
+                    .short('l')
+                    .long("limit")
+                    .value_name("count")
+                    .value_parser(value_parser!(u8)),
+            )
         )
         // Sub-command for monitor mode.
         .subcommand(Command::new("monitor")

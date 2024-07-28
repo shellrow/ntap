@@ -15,6 +15,13 @@ use nex::packet::ethernet::EtherType;
 use nex::packet::ip::IpNextLevelProtocol;
 
 pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
+    let sub_args = match app.subcommand_matches("live") {
+        Some(matches) => matches,
+        None => {
+            eprintln!("Error: Could not get subcommand matches");
+            return Ok(());
+        }
+    };
     // Check .ntap directory
     match crate::sys::get_config_dir_path() {
         Some(_config_dir) => {}
@@ -96,8 +103,8 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     }
 
     let storage_capacity: u8;
-    if app.contains_id("limit") {
-        storage_capacity = *app.get_one("limit").unwrap_or(&100);
+    if sub_args.contains_id("limit") {
+        storage_capacity = *sub_args.get_one("limit").unwrap_or(&100);
     } else {
         storage_capacity = u8::MAX;
     }
