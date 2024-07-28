@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         AppCommands::Interfaces => handler::interface::show_interfaces(),
         AppCommands::Interface => handler::interface::show_default_interface(),
         AppCommands::Route => handler::route::show_routes(),
-        AppCommands::Socket => handler::socket::show_socket_info(),
+        AppCommands::Socket => handler::socket::show_socket_info(&args),
         AppCommands::IpInfo => handler::ip_info::show_public_ip_info(),
         AppCommands::Update => handler::update::download_db_files(),
         AppCommands::Default => {
@@ -119,12 +119,13 @@ fn parse_args() -> ArgMatches {
             Command::new("socket")
                 .about("Show active TCP connections and the TCP and UDP ports on which is listening. ntap socket --help for more information")
                 .arg(
-                    Arg::new("protocol")
-                        .help("specify protocols. The protocol can be ipv4, ipv6, tcp, udp")
-                        .short('p')
-                        .long("protocol")
+                    Arg::new("protocols")
+                        .help("Specify protocols. The protocol can be ipv4, ipv6, tcp, udp. Example: ntap socket -P tcp")
+                        .short('P')
+                        .long("protocols")
                         .value_name("protocols")
                         .value_delimiter(',')
+                        .value_parser(value_parser!(String))
                 ),
         )
         // Sub-command for show network interfaces
