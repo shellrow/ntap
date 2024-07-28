@@ -8,6 +8,8 @@ Network traffic monitor/analyzer, for Linux, macOS, and Windows.
 ## Overview
 **ntap** provides comprehensive insights into your network's activity, enabling users to monitor traffic, manage connections, and view network configurations with ease.
 
+[Screenshots](#screenshots)
+
 ## Features
 - **Live Packet Capture**: Track live network packet data flow.
 - **Real-time Monitoring**: Track network utilization as it happens.
@@ -130,7 +132,7 @@ sudo chmod-bpf install
 
 
 ## Screenshots
-![image](resources/ss/ntap-ss-live-capture.png)  
 ![image](resources/ss/ntap-ss-overview.png)  
 ![image](resources/ss/ntap-ss-remote-host.png)  
 ![image](resources/ss/ntap-ss-connection.png)  
+![image](resources/ss/ntap-ss-live-capture.png)  
