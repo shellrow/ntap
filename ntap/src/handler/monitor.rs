@@ -1,8 +1,10 @@
 use crate::config::AppConfig;
 use crate::net::stat::NetStatStrage;
 use crate::thread_log;
+use std::collections::HashSet;
 use std::error::Error;
 use std::fs::File;
+use std::net::IpAddr;
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
@@ -11,6 +13,8 @@ use clap::ArgMatches;
 
 #[cfg(not(feature = "bundle"))]
 use inquire::Confirm;
+use nex::packet::ethernet::EtherType;
+use nex::packet::ip::IpNextLevelProtocol;
 
 pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     // Check .ntap directory
@@ -57,6 +61,61 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
     if app.contains_id("tickrate") {
         config.display.tick_rate = *app.get_one("tickrate").unwrap_or(&1000);
+    }
+
+    // Interface filter
+    if app.contains_id("interfaces") {
+        match app.get_many::<String>("interfaces") {
+            Some(interfaces) => {
+                config.network.interfaces = interfaces.cloned().collect();
+            }
+            None => {
+                config.network.interfaces = Vec::new();
+            }
+        }
+    }
+
+    // Protocol filter
+    let mut ethertypes: HashSet<EtherType> = HashSet::new();
+    let mut ip_next_protocols: HashSet<IpNextLevelProtocol> = HashSet::new();
+    if app.contains_id("protocols") {
+        match app.get_many::<String>("protocols") {
+            Some(protocols_ref) => {
+                let protocols: Vec<String> = protocols_ref.cloned().collect();
+                for protocol in protocols {
+                    if let Some(ethertype) = crate::net::packet::get_ethertype_from_str(&protocol) {
+                        ethertypes.insert(ethertype);
+                    }
+                    if let Some(ip_next_protocol) =
+                        crate::net::packet::get_ip_next_protocol_from_str(&protocol)
+                    {
+                        ip_next_protocols.insert(ip_next_protocol);
+                    }
+                }
+            }
+            None => {}
+        }
+    }
+
+    // IP Address filter
+    let ips: HashSet<IpAddr> = match app.get_many::<IpAddr>("ips") {
+        Some(ips_ref) => ips_ref.cloned().collect(),
+        None => HashSet::new(),
+    };
+
+    // Port filter
+    let ports: HashSet<u16> = match app.get_many::<u16>("ports") {
+        Some(ports_ref) => ports_ref.cloned().collect(),
+        None => HashSet::new(),
+    };
+
+    if !ip_next_protocols.is_empty() || ips.len() > 0 || ports.len() > 0 {
+        ethertypes.insert(EtherType::Ipv4);
+        ethertypes.insert(EtherType::Ipv6);
+        if ports.len() > 0 {
+            ip_next_protocols.insert(IpNextLevelProtocol::Tcp);
+            ip_next_protocols.insert(IpNextLevelProtocol::Udp);
+        }
     }
 
     // Init logger
@@ -109,14 +168,26 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let mut netstat_strage_socket = Arc::clone(&netstat_strage);
     let mut netstat_strage_ui = Arc::clone(&netstat_strage);
 
-    let usable_interfaces = crate::net::interface::get_usable_interfaces();
+    let target_interfaces: Vec<netdev::Interface>;
+    if config.network.interfaces.is_empty() {
+        target_interfaces = crate::net::interface::get_usable_interfaces();
+    } else {
+        target_interfaces =
+            crate::net::interface::get_interfaces_by_name(&config.network.interfaces);
+    }
     let mut pcap_thread_index = 0;
-    let pcap_handlers = usable_interfaces
+    let pcap_handlers = target_interfaces
         .iter()
         .map(|iface| {
             let mut netstat_strage_pcap = Arc::clone(&netstat_strage);
             let iface = iface.clone();
-            let pcap_option = crate::net::pcap::PacketCaptureOptions::from_interface(&iface);
+            let mut pcap_option = crate::net::pcap::PacketCaptureOptions::from_interface(&iface);
+            pcap_option.ether_types = ethertypes.clone();
+            pcap_option.ip_protocols = ip_next_protocols.clone();
+            pcap_option.src_ips = ips.clone();
+            pcap_option.src_ports = ports.clone();
+            pcap_option.dst_ips = ips.clone();
+            pcap_option.dst_ports = ports.clone();
             let thread_name = format!("pcap-thread-{}", iface.name.clone());
             let pcap_thread = thread::Builder::new().name(thread_name.clone());
             let pcap_handler = pcap_thread.spawn(move || {
