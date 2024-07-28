@@ -11,10 +11,12 @@ Network traffic monitor/analyzer, for Linux, macOS, and Windows.
 [Screenshots](#screenshots)
 
 ## Features
-- **Live Packet Capture**: Track live network packet data flow.
-- **Real-time Monitoring**: Track network utilization as it happens.
-- **Connection Management**: Analyze active connections quickly and effectively.
-- **Interface and Routing Insights**: Get detailed views of network interfaces and routing tables.
+- **Network Statistics**: Dive into comprehensive statistics about your network traffic, covering bytes/bandwidth usage, top remote hosts, connections, and processes.
+- **Live Packet Capture**: Continuously track the flow of network packets in real-time, offering insights into ongoing traffic.
+- **Real-time Monitoring**: Monitor network utilization with country and Autonomous System (AS) or Internet Service Provider (ISP) information as it unfolds.
+- **Connection Management**: Quickly and effectively analyze active network connections to optimize performance and security.
+- **Interface and Routing Insights**: Obtain detailed views of network interfaces and routing tables to enhance network management and troubleshooting.
+- **Your Public IP Address Info**: Effortlessly retrieve and display your current public IP address, along with associated country and AS (or ISP) info.
 
 ## Prerequisites
 - Ensure you have a compatible operating system (Linux, macOS, Windows).
