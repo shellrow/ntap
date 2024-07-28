@@ -18,6 +18,9 @@ Network traffic monitor/analyzer, for Linux, macOS, and Windows.
 - **Interface and Routing Insights**: Obtain detailed views of network interfaces and routing tables to enhance network management and troubleshooting.
 - **Your Public IP Address Info**: Effortlessly retrieve and display your current public IP address, along with associated country and AS (or ISP) info.
 
+## Usage
+See [usage](resources/doc/USAGE.md)
+
 ## Prerequisites
 - Ensure you have a compatible operating system (Linux, macOS, Windows).
 
