@@ -12,7 +12,7 @@ ntap [OPTIONS] [COMMAND]
 ```
 
 ## Default Behavior
-If no options or commands are specified, ntap will automatically enter the stat mode:
+By default, if no subcommand is specified, ntap enters the `stat` mode, which displays continuous network statistics:
 ```bash
 ntap
 ```
@@ -20,12 +20,12 @@ This default mode captures packets on all available network interfaces and conti
 
 ## Commands
 
-### stat: Enters stat mode to continuously display live network statistics, covering bytes/bandwidth usage, top remote hosts, connections, and processes.
+### stat: Continuously displays network statistics, including bytes/bandwidth usage, top remote hosts, connections, and processes.
 ```bash
 ntap stat
 ```
 
-### live: Enters live capture mode to continuously display live network packet data.
+### live: Start live packet capture, continuously display live network packet data.
 ```bash
 ntap live
 ```
