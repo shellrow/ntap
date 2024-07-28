@@ -51,26 +51,32 @@ impl IpDatabase {
         ip_db.load_autonomous_file()?;
         Ok(ip_db)
     }
+    #[cfg(feature = "bundle")]
     pub fn load_ipv4_country_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.ipv4_country_map = ntap_db_ipv4_country::get_map();
         Ok(())
     }
+    #[cfg(feature = "bundle")]
     pub fn load_ipv6_country_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.ipv6_country_map = ntap_db_ipv6_country::get_map();
         Ok(())
     }
+    #[cfg(feature = "bundle")]
     pub fn load_ipv4_asn_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.ipv4_asn_map = ntap_db_ipv4_asn::get_map();
         Ok(())
     }
+    #[cfg(feature = "bundle")]
     pub fn load_ipv6_asn_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.ipv6_asn_map = ntap_db_ipv6_asn::get_map();
         Ok(())
     }
+    #[cfg(feature = "bundle")]
     pub fn load_country_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.country_map = ntap_db_country::get_map();
         Ok(())
     }
+    #[cfg(feature = "bundle")]
     pub fn load_autonomous_map(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.autonomous_map = ntap_db_as::get_map();
         Ok(())
