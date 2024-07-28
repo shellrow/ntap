@@ -55,7 +55,7 @@ impl<'a> App<'a> {
             title,
             should_pause: false,
             should_quit: false,
-            tabs: TabsState::new(vec!["Statistics", "RemoteAddresses", "Connections"]),
+            tabs: TabsState::new(vec!["Network Statistics"]),
             talbe_state: TableState::default(),
             netstat_data: NetStatData::new(),
             remote_hosts: vec![],
@@ -158,7 +158,7 @@ impl<'a> App<'a> {
             Duration::from_millis(self.config.display.tick_rate),
         );
         self.remote_hosts = self.netstat_data.get_remote_hosts(None);
-        //self.top_processes = app.netstat_data.get_top_processes();
+        self.processes = self.netstat_data.get_processes(None);
         self.connections = self.netstat_data.get_connections(None);
     }
 }

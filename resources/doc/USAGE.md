@@ -1,7 +1,8 @@
 # Usage Guide for ntap
 
 ## Overview
-`ntap` is a real-time network utilization monitoring tool that provides comprehensive insights into your network activity.   This guide describes how to use `ntap` and its various commands and options.
+`ntap` is a real-time network monitoring tool that provides comprehensive insights into your network activity.  
+This guide describes how to use `ntap` and its various commands and options.
 
 ## Basic Usage
 To run `ntap`, use the following syntax:
@@ -11,20 +12,25 @@ ntap [OPTIONS] [COMMAND]
 ```
 
 ## Default Behavior
-If no options or commands are specified, ntap will automatically enter the live capture mode:
+By default, if no subcommand is specified, ntap enters the `stat` mode, which displays continuous network statistics:
 ```bash
 ntap
 ```
-This default mode captures packets on all available network interfaces and continuously displays live network packet data flow, providing a quick and easy way to monitor current network activity without the need for additional configuration.
+This default mode captures packets on all available network interfaces and continuously displays live network statistics, providing a quick and easy way to monitor current network activity without the need for additional configuration.
 
 ## Commands
 
-### live: Enters live capture mode to continuously display live network packet data.
+### stat: Continuously displays network statistics, including bytes/bandwidth usage, top remote hosts, connections, and processes.
+```bash
+ntap stat
+```
+
+### live: Start live packet capture, continuously display live network packet data.
 ```bash
 ntap live
 ```
 
-### monitor: Enters monitor mode to continuously display live network usage statistics.
+### monitor: Enters monitor mode to continuously display live network usage statistics with associated country and AS (or ISP) info.
 ```bash
 ntap monitor
 ```
@@ -32,11 +38,6 @@ ntap monitor
 ### socket: Displays active TCP connections and the ports for TCP and UDP that are listening.
 ```bash
 ntap socket
-```
-
-For more detailed options for sockets:
-```bash
-ntap socket --help
 ```
 
 ### interfaces: Shows all network interfaces.
@@ -64,29 +65,48 @@ ntap ipinfo
 ntap help
 ```
 
-For help on a specific command, such as monitor:
+For help on a specific command, such as live:
 ```bash
-ntap help socket
+ntap help live
 ```
 
 ## Options
---tickrate(-r) <duration_ms>: Specifies the time in milliseconds between two updates in monitor mode.
-```bash
-ntap --tickrate 1000 monitor
-ntap --r 1000 monitor
-```
-
---enhanced-graphics: Enables the use of Unicode symbols to improve the appearance of the application.
-```bash
-ntap --enhanced-graphics
-```
-
--h, --help: Prints help information.
+Help (`-h`, `--help`): Prints help information.
 ```bash
 ntap --help
 ```
 
--V, --version: Displays the version of the ntap tool.
+Subcommand Help (`-h`, `--help`): Prints subcommand's help information.
+```bash
+ntap live --help
+```
+
+Tick Rate (`-r`, `--tickrate`): Sets the refresh rate in milliseconds.
+```bash
+ntap --tickrate 1000
+```
+
+Interfaces (`-i`, `--interfaces`): Specifies the interfaces by name.
+```bash
+ntap -i eth0,eth1
+```
+
+Protocols (`-P`, `--protocols`): Filters traffic by protocols.
+```bash
+ntap -P tcp,udp
+```
+
+IP Addresses (`-a`, `--ips`): Filters traffic by specific IP addresses.
+```bash
+ntap --ips 1.1.1.1,8.8.8.8
+```
+
+Ports (`-p`, `--ports`): Filters traffic by ports.
+```bash
+ntap -p 80,443
+```
+
+Version (`-V`, `--version`): Displays the version of the ntap.
 ```bash
 ntap --version
 ```

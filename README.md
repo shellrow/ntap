@@ -8,11 +8,18 @@ Network traffic monitor/analyzer, for Linux, macOS, and Windows.
 ## Overview
 **ntap** provides comprehensive insights into your network's activity, enabling users to monitor traffic, manage connections, and view network configurations with ease.
 
+[Screenshots](#screenshots)
+
 ## Features
-- **Live Packet Capture**: Track live network packet data flow.
-- **Real-time Monitoring**: Track network utilization as it happens.
-- **Connection Management**: Analyze active connections quickly and effectively.
-- **Interface and Routing Insights**: Get detailed views of network interfaces and routing tables.
+- **Network Statistics**: Dive into comprehensive statistics about your network traffic, covering bytes/bandwidth usage, top remote hosts, connections, and processes.
+- **Live Packet Capture**: Continuously track the flow of network packets in real-time, offering insights into ongoing traffic.
+- **Real-time Monitoring**: Monitor network utilization with country and Autonomous System (AS) or Internet Service Provider (ISP) information as it unfolds.
+- **Connection Management**: Quickly and effectively analyze active network connections to optimize performance and security.
+- **Interface and Routing Insights**: Obtain detailed views of network interfaces and routing tables to enhance network management and troubleshooting.
+- **Your Public IP Address Info**: Effortlessly retrieve and display your current public IP address, along with associated country and AS (or ISP) info.
+
+## Usage
+See [usage](resources/doc/USAGE.md)
 
 ## Prerequisites
 - Ensure you have a compatible operating system (Linux, macOS, Windows).
@@ -128,9 +135,9 @@ sudo chmod-bpf install
 ### License
 `ntap` is released under the MIT License. See the LICENSE file for more details.
 
-
 ## Screenshots
-![image](resources/ss/ntap-ss-live-capture.png)  
-![image](resources/ss/ntap-ss-overview.png)  
-![image](resources/ss/ntap-ss-remote-host.png)  
-![image](resources/ss/ntap-ss-connection.png)  
+![image](resources/ss/ntap-ss-stat.png)  
+![image](resources/ss/ntap-ss-monitor.png)  
+![image](resources/ss/ntap-ss-remote-hosts.png)  
+![image](resources/ss/ntap-ss-connections.png)  
+![image](resources/ss/ntap-ss-live.png)  

@@ -4,9 +4,11 @@ pub mod live;
 pub mod monitor;
 pub mod route;
 pub mod socket;
+pub mod stat;
 pub mod update;
 
 pub enum AppCommands {
+    Stat,
     Live,
     Monitor,
     Interfaces,
@@ -21,6 +23,7 @@ pub enum AppCommands {
 impl AppCommands {
     pub fn from_str(s: &str) -> AppCommands {
         match s {
+            "stat" => AppCommands::Stat,
             "live" => AppCommands::Live,
             "monitor" => AppCommands::Monitor,
             "interfaces" => AppCommands::Interfaces,
