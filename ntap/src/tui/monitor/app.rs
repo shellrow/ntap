@@ -55,7 +55,7 @@ impl<'a> App<'a> {
             title,
             should_pause: false,
             should_quit: false,
-            tabs: TabsState::new(vec!["Overview", "RemoteAddresses", "Connections"]),
+            tabs: TabsState::new(vec!["Statistics", "RemoteAddresses", "Connections"]),
             talbe_state: TableState::default(),
             netstat_data: NetStatData::new(),
             remote_hosts: vec![],
