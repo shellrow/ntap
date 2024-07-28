@@ -4,8 +4,8 @@ pub mod live;
 pub mod monitor;
 pub mod route;
 pub mod socket;
-pub mod update;
 pub mod stat;
+pub mod update;
 
 pub enum AppCommands {
     Stat,

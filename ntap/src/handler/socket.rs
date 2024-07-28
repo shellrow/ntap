@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::net::socket::{AddressFamily, TransportProtocol, SocketInfoOption};
+use crate::net::socket::{AddressFamily, SocketInfoOption, TransportProtocol};
 use clap::ArgMatches;
 use comfy_table::presets::NOTHING;
 use comfy_table::*;

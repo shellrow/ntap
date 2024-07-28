@@ -144,17 +144,10 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
             Constraint::Length(11),
             Constraint::Length(11),
         ];
-        
+
         let table = Table::new(rows, widths)
             .column_spacing(1)
-            .header(
-                Row::new(vec![
-                    "IP Address",
-                    "↓ Bytes",
-                    "↑ Bytes",
-                ])
-                .style(Style::new().bold()),
-            )
+            .header(Row::new(vec!["IP Address", "↓ Bytes", "↑ Bytes"]).style(Style::new().bold()))
             .block(
                 Block::default()
                     .borders(Borders::ALL)
@@ -198,13 +191,8 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
         let table = Table::new(rows, widths)
             .column_spacing(1)
             .header(
-                Row::new(vec![
-                    "PID",
-                    "Process Name",
-                    "↓ Bytes",
-                    "↑ Bytes",
-                ])
-                .style(Style::new().bold()),
+                Row::new(vec!["PID", "Process Name", "↓ Bytes", "↑ Bytes"])
+                    .style(Style::new().bold()),
             )
             .block(
                 Block::default()
