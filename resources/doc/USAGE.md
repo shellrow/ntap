@@ -1,7 +1,8 @@
 # Usage Guide for ntap
 
 ## Overview
-`ntap` is a real-time network utilization monitoring tool that provides comprehensive insights into your network activity.   This guide describes how to use `ntap` and its various commands and options.
+`ntap` is a real-time network monitoring tool that provides comprehensive insights into your network activity.  
+This guide describes how to use `ntap` and its various commands and options.
 
 ## Basic Usage
 To run `ntap`, use the following syntax:
@@ -11,20 +12,25 @@ ntap [OPTIONS] [COMMAND]
 ```
 
 ## Default Behavior
-If no options or commands are specified, ntap will automatically enter the live capture mode:
+If no options or commands are specified, ntap will automatically enter the stat mode:
 ```bash
 ntap
 ```
-This default mode captures packets on all available network interfaces and continuously displays live network packet data flow, providing a quick and easy way to monitor current network activity without the need for additional configuration.
+This default mode captures packets on all available network interfaces and continuously displays live network statistics, providing a quick and easy way to monitor current network activity without the need for additional configuration.
 
 ## Commands
+
+### stat: Enters stat mode to continuously display live network statistics, covering bytes/bandwidth usage, top remote hosts, connections, and processes.
+```bash
+ntap stat
+```
 
 ### live: Enters live capture mode to continuously display live network packet data.
 ```bash
 ntap live
 ```
 
-### monitor: Enters monitor mode to continuously display live network usage statistics.
+### monitor: Enters monitor mode to continuously display live network usage statistics with associated country and AS (or ISP) info.
 ```bash
 ntap monitor
 ```
@@ -74,11 +80,6 @@ ntap help socket
 ```bash
 ntap --tickrate 1000 monitor
 ntap --r 1000 monitor
-```
-
---enhanced-graphics: Enables the use of Unicode symbols to improve the appearance of the application.
-```bash
-ntap --enhanced-graphics
 ```
 
 -h, --help: Prints help information.
