@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         AppCommands::Update => handler::update::download_db_files(),
         AppCommands::Default => {
             // If no subcommand is specified, enter stat mode by default
-            handler::stat::show_stat(&args)
+            handler::stat::show_stat_default(&args)
         }
     }
 }
@@ -97,6 +97,42 @@ fn parse_args() -> ArgMatches {
         // Sub-command for stat mode. This is the default mode of ntap
         .subcommand(Command::new("stat")
             .about("Continuously displays network statistics, covering bytes/bandwidth usage, top remote hosts, connections, and processes.")
+            .arg(
+                Arg::new("interfaces")
+                    .help("Specify the interfaces by name. Example: ntap stat -i eth0,eth1")
+                    .short('i')
+                    .long("interfaces")
+                    .value_name("interfaces")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(String))
+            )
+            .arg(
+                Arg::new("protocols")
+                    .help("Specify protocols. Example: ntap stat -P tcp,udp")
+                    .short('P')
+                    .long("protocols")
+                    .value_name("protocols")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(String))
+            )
+            .arg(
+                Arg::new("ips")
+                    .help("Specify IP addresses. Example: ntap stat -a 1.1.1.1,8.8.8.8")
+                    .short('a')
+                    .long("ips")
+                    .value_name("ips")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(IpAddr))
+            )
+            .arg(
+                Arg::new("ports")
+                    .help("Specify ports. Example: ntap stat -p 80,443")
+                    .short('p')
+                    .long("ports")
+                    .value_name("ports")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(u16))
+            )
         )
         // Sub-command for live mode.
         .subcommand(Command::new("live")
@@ -109,10 +145,82 @@ fn parse_args() -> ArgMatches {
                     .value_name("count")
                     .value_parser(value_parser!(u8)),
             )
+            .arg(
+                Arg::new("interfaces")
+                    .help("Specify the interfaces by name. Example: ntap live -i eth0,eth1")
+                    .short('i')
+                    .long("interfaces")
+                    .value_name("interfaces")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(String))
+            )
+            .arg(
+                Arg::new("protocols")
+                    .help("Specify protocols. Example: ntap live -P tcp,udp")
+                    .short('P')
+                    .long("protocols")
+                    .value_name("protocols")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(String))
+            )
+            .arg(
+                Arg::new("ips")
+                    .help("Specify IP addresses. Example: ntap live -a 1.1.1.1,8.8.8.8")
+                    .short('a')
+                    .long("ips")
+                    .value_name("ips")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(IpAddr))
+            )
+            .arg(
+                Arg::new("ports")
+                    .help("Specify ports. Example: ntap live -p 80,443")
+                    .short('p')
+                    .long("ports")
+                    .value_name("ports")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(u16))
+            )
         )
         // Sub-command for monitor mode.
         .subcommand(Command::new("monitor")
             .about("Enter monitor mode. Monitor mode continuously displays live network statistics with Country and AS (or ISP) info.")
+            .arg(
+                Arg::new("interfaces")
+                    .help("Specify the interfaces by name. Example: ntap monitor -i eth0,eth1")
+                    .short('i')
+                    .long("interfaces")
+                    .value_name("interfaces")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(String))
+            )
+            .arg(
+                Arg::new("protocols")
+                    .help("Specify protocols. Example: ntap monitor -P tcp,udp")
+                    .short('P')
+                    .long("protocols")
+                    .value_name("protocols")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(String))
+            )
+            .arg(
+                Arg::new("ips")
+                    .help("Specify IP addresses. Example: ntap monitor -a 1.1.1.1,8.8.8.8")
+                    .short('a')
+                    .long("ips")
+                    .value_name("ips")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(IpAddr))
+            )
+            .arg(
+                Arg::new("ports")
+                    .help("Specify ports. Example: ntap monitor -p 80,443")
+                    .short('p')
+                    .long("ports")
+                    .value_name("ports")
+                    .value_delimiter(',')
+                    .value_parser(value_parser!(u16))
+            )
         )
         // Sub-command for show active TCP connections and the TCP and UDP ports on which is listening
         .subcommand(

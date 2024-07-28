@@ -48,8 +48,8 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     }
 
     // Interface filter
-    if app.contains_id("interfaces") {
-        match app.get_many::<String>("interfaces") {
+    if sub_args.contains_id("interfaces") {
+        match sub_args.get_many::<String>("interfaces") {
             Some(interfaces) => {
                 config.network.interfaces = interfaces.cloned().collect();
             }
@@ -62,8 +62,8 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     // Protocol filter
     let mut ethertypes: HashSet<EtherType> = HashSet::new();
     let mut ip_next_protocols: HashSet<IpNextLevelProtocol> = HashSet::new();
-    if app.contains_id("protocols") {
-        match app.get_many::<String>("protocols") {
+    if sub_args.contains_id("protocols") {
+        match sub_args.get_many::<String>("protocols") {
             Some(protocols_ref) => {
                 let protocols: Vec<String> = protocols_ref.cloned().collect();
                 for protocol in protocols {
@@ -82,13 +82,13 @@ pub fn live_capture(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     }
 
     // IP Address filter
-    let ips: HashSet<IpAddr> = match app.get_many::<IpAddr>("ips") {
+    let ips: HashSet<IpAddr> = match sub_args.get_many::<IpAddr>("ips") {
         Some(ips_ref) => ips_ref.cloned().collect(),
         None => HashSet::new(),
     };
 
     // Port filter
-    let ports: HashSet<u16> = match app.get_many::<u16>("ports") {
+    let ports: HashSet<u16> = match sub_args.get_many::<u16>("ports") {
         Some(ports_ref) => ports_ref.cloned().collect(),
         None => HashSet::new(),
     };

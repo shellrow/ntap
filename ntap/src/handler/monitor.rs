@@ -17,6 +17,13 @@ use nex::packet::ethernet::EtherType;
 use nex::packet::ip::IpNextLevelProtocol;
 
 pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
+    let sub_args = match app.subcommand_matches("monitor") {
+        Some(matches) => matches,
+        None => {
+            eprintln!("Error: Could not get subcommand matches");
+            return Ok(());
+        }
+    };
     // Check .ntap directory
     match crate::sys::get_config_dir_path() {
         Some(_config_dir) => {}
@@ -64,8 +71,8 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     }
 
     // Interface filter
-    if app.contains_id("interfaces") {
-        match app.get_many::<String>("interfaces") {
+    if sub_args.contains_id("interfaces") {
+        match sub_args.get_many::<String>("interfaces") {
             Some(interfaces) => {
                 config.network.interfaces = interfaces.cloned().collect();
             }
@@ -78,8 +85,8 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     // Protocol filter
     let mut ethertypes: HashSet<EtherType> = HashSet::new();
     let mut ip_next_protocols: HashSet<IpNextLevelProtocol> = HashSet::new();
-    if app.contains_id("protocols") {
-        match app.get_many::<String>("protocols") {
+    if sub_args.contains_id("protocols") {
+        match sub_args.get_many::<String>("protocols") {
             Some(protocols_ref) => {
                 let protocols: Vec<String> = protocols_ref.cloned().collect();
                 for protocol in protocols {
@@ -98,13 +105,13 @@ pub fn monitor(app: &ArgMatches) -> Result<(), Box<dyn Error>> {
     }
 
     // IP Address filter
-    let ips: HashSet<IpAddr> = match app.get_many::<IpAddr>("ips") {
+    let ips: HashSet<IpAddr> = match sub_args.get_many::<IpAddr>("ips") {
         Some(ips_ref) => ips_ref.cloned().collect(),
         None => HashSet::new(),
     };
 
     // Port filter
-    let ports: HashSet<u16> = match app.get_many::<u16>("ports") {
+    let ports: HashSet<u16> = match sub_args.get_many::<u16>("ports") {
         Some(ports_ref) => ports_ref.cloned().collect(),
         None => HashSet::new(),
     };
