@@ -24,6 +24,11 @@ install-updater = false
 # Extra static files to include in each App (path relative to this Cargo.toml's dir)
 include = ["resources/doc/USAGE.md"]
 #features = ["bundle"]
-runner = "ubuntu-22.04"
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
+
+[dist.github-custom-runners]
+runner = "ubuntu-22.04"
+
+[dist.github-custom-runners.x86_64-unknown-linux-gnu]
+runner = "ubuntu-22.04"
