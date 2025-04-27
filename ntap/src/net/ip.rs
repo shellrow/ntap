@@ -5,11 +5,15 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 pub fn get_network_address(ip_addr: IpAddr) -> Result<String, String> {
     match ip_addr {
         IpAddr::V4(ipv4_addr) => {
-            let net: Ipv4Net = Ipv4Net::new(ipv4_addr, 24);
+            let net: Ipv4Net = Ipv4Net::new(ipv4_addr, 24).map_err(|e| {
+                format!("Invalid IPv4 prefix length : {}", e.to_string())
+            })?;
             Ok(net.network().to_string())
         }
         IpAddr::V6(ipv6_addr) => {
-            let net: Ipv6Net = Ipv6Net::new(ipv6_addr, 24);
+            let net: Ipv6Net = Ipv6Net::new(ipv6_addr, 24).map_err(|e| {
+                format!("Invalid IPv6 prefix length: {}", e.to_string())
+            })?;
             Ok(net.network().to_string())
         }
     }
