@@ -26,13 +26,13 @@ pub fn show_interfaces() -> Result<(), Box<dyn Error>> {
         ));
         let mut ipv4_tree = Tree::new(node_label("IPv4 Addresses", None, None));
         for ipv4 in &iface.ipv4 {
-            ipv4_tree.push(node_label(&ipv4.addr.to_string(), None, None));
+            ipv4_tree.push(node_label(&ipv4.addr().to_string(), None, None));
         }
         iface_tree.push(ipv4_tree);
 
         let mut ipv6_tree = Tree::new(node_label("IPv6 Addresses", None, None));
         for ipv6 in &iface.ipv6 {
-            ipv6_tree.push(node_label(&ipv6.addr.to_string(), None, None));
+            ipv6_tree.push(node_label(&ipv6.addr().to_string(), None, None));
         }
         iface_tree.push(ipv6_tree);
 
@@ -84,13 +84,13 @@ pub fn show_default_interface() -> Result<(), Box<dyn Error>> {
     ));
     let mut ipv4_tree = Tree::new(node_label("IPv4 Addresses", None, None));
     for ipv4 in &iface.ipv4 {
-        ipv4_tree.push(node_label(&ipv4.addr.to_string(), None, None));
+        ipv4_tree.push(node_label(&ipv4.addr().to_string(), None, None));
     }
     tree.push(ipv4_tree);
 
     let mut ipv6_tree = Tree::new(node_label("IPv6 Addresses", None, None));
     for ipv6 in &iface.ipv6 {
-        ipv6_tree.push(node_label(&ipv6.addr.to_string(), None, None));
+        ipv6_tree.push(node_label(&ipv6.addr().to_string(), None, None));
     }
     tree.push(ipv6_tree);
 
