@@ -49,3 +49,4 @@ pr-run-mode = "plan"
 install-updater = false
 include = ["resources/doc/USAGE.md"]
 #features = ["bundle"]
+runner = "ubuntu-24.04"
