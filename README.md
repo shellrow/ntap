@@ -134,10 +134,3 @@ sudo chmod-bpf install
 
 ### License
 `ntap` is released under the MIT License. See the LICENSE file for more details.
-
-## Screenshots
-![image](resources/ss/ntap-ss-stat.png)  
-![image](resources/ss/ntap-ss-monitor.png)  
-![image](resources/ss/ntap-ss-remote-hosts.png)  
-![image](resources/ss/ntap-ss-connections.png)  
-![image](resources/ss/ntap-ss-live.png)  
