@@ -28,7 +28,4 @@ include = ["resources/doc/USAGE.md"]
 install-path = "CARGO_HOME"
 
 [dist.github-custom-runners]
-runner = "ubuntu-22.04"
-
-[dist.github-custom-runners.x86_64-unknown-linux-gnu]
-runner = "ubuntu-22.04"
+runner = "ubuntu-latest"
