@@ -54,9 +54,6 @@ ntap-db-udp-service = { path = "../ntap-db/udp-service", version = "0.7.0", defa
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.50"
-sha2 = "0.10"
-zip = "0.6"
-privilege = "0.3"
 
 [features]
 default = []
