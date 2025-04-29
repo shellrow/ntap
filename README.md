@@ -38,12 +38,6 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/shellrow/ntap/releases/
 irm https://github.com/shellrow/ntap/releases/latest/download/ntap-installer.ps1 | iex
 ```
 
-### Install prebuilt binaries via Homebrew
-
-```sh
-brew install shellrow/tap-ntap/ntap
-```
-
 ### From Releases
 You can download archives of precompiled binaries from the [releases](https://github.com/shellrow/ntap/releases) 
 
