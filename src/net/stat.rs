@@ -11,8 +11,12 @@ use crate::net::socket::{
 };
 use crate::notification::Notification;
 use crate::process::{ProcessDisplayInfo, ProcessInfo};
+use bytes::Bytes;
 use netdev::{mac::MacAddr, Interface};
+use nex::packet::dns::{DnsPacket, DnsType};
+use nex::packet::packet::Packet;
 use serde::{Deserialize, Serialize};
+use std::net::Ipv4Addr;
 use std::{
     collections::HashMap,
     net::IpAddr,
@@ -246,6 +250,50 @@ impl NetStatStrage {
         }
         false
     }
+    pub fn parse_dns_packet(&self, dns_packet: &Bytes) {
+        if let Some(dns) = DnsPacket::from_buf(dns_packet) {
+            let mut name = String::new();
+            let mut ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+            for query in &dns.queries {
+                match query.qtype {
+                    DnsType::A | DnsType::AAAA => {
+                        match query.get_qname_parsed() {
+                            Ok(qname) => {
+                                name = qname.to_string();
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to parse query name: {:?}", e);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            for response in &dns.responses {
+                match response.rtype {
+                    DnsType::A | DnsType::AAAA => {
+                        if let Some(ip) = response.get_ip() {
+                            ip_addr = ip;
+                        } else {
+                            tracing::error!("Failed to get IP address from response: {:?}", response);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            let mut reverse_dns_map_inner = match self.reverse_dns_map.lock() {
+                Ok(inner) => inner,
+                Err(e) => {
+                    tracing::error!("Failed to lock reverse_dns_map: {:?}", e);
+                    return;
+                }
+            };
+            if !name.is_empty() && ip_addr != IpAddr::V4(Ipv4Addr::UNSPECIFIED) {
+                reverse_dns_map_inner.insert(ip_addr, name);
+            }
+            drop(reverse_dns_map_inner);
+        }
+    }
     pub fn update(&self, frame: PacketFrame) {
         let local_ip_map_inner = match self.local_ip_map.lock() {
             Ok(inner) => inner,
@@ -433,7 +481,7 @@ impl NetStatStrage {
                 }
             }
         };
-        // Update or Insert RemoteHostInfo
+        /* // Update or Insert RemoteHostInfo
         let remote_host: &mut RemoteHostInfo = remote_hosts_inner
             .entry(remote_ip_addr)
             .or_insert(RemoteHostInfo::new(mac_addr, remote_ip_addr));
@@ -446,7 +494,7 @@ impl NetStatStrage {
                 remote_host.traffic_info.packet_received += 1;
                 remote_host.traffic_info.bytes_received += frame.packet_len;
             }
-        }
+        } */
         // Update SocketConnection if the packet is TCP or UDP.
         if let Some(transport) = frame.transport {
             if let Some(_tcp) = transport.tcp {
@@ -494,8 +542,40 @@ impl NetStatStrage {
                         socket_traffic.bytes_received += frame.packet_len;
                     }
                 }
+                // Try parse DNS packet
+                self.parse_dns_packet(&frame.payload);
             }
         }
+        let mut reverse_dns_map_inner = match self.reverse_dns_map.lock() {
+            Ok(inner) => inner,
+            Err(e) => {
+                tracing::error!("Failed to lock reverse_dns_map: {:?}", e);
+                return;
+            }
+        };
+        // Check Reverse DNS Map
+        let mut hostname = String::new();
+        if let Some(name) = reverse_dns_map_inner.get(&remote_ip_addr) {
+            hostname = name.to_string();
+        }
+        // Update or Insert RemoteHostInfo
+        let remote_host: &mut RemoteHostInfo = remote_hosts_inner
+            .entry(remote_ip_addr)
+            .or_insert(RemoteHostInfo::new(mac_addr, remote_ip_addr, hostname.clone()));
+        match direction {
+            Direction::Egress => {
+                remote_host.traffic_info.packet_sent += 1;
+                remote_host.traffic_info.bytes_sent += frame.packet_len;
+            }
+            Direction::Ingress => {
+                remote_host.traffic_info.packet_received += 1;
+                remote_host.traffic_info.bytes_received += frame.packet_len;
+            }
+        }
+        if remote_host.hostname.is_empty() && !hostname.is_empty() {
+            remote_host.hostname = hostname.clone();
+        }
+        
         // Drop the locks
         drop(traffic_inner);
         drop(remote_hosts_inner);
@@ -698,11 +778,7 @@ impl NetStatData {
             if let Some(host) = self.remote_hosts.get(ip) {
                 let host = HostDisplayInfo {
                     ip_addr: host.ip_addr,
-                    host_name: host.hostname.clone(),
-                    country_code: host.country_code.clone(),
-                    country_name: host.country_name.clone(),
-                    asn: host.asn.clone(),
-                    as_name: host.as_name.clone(),
+                    hostname: host.hostname.clone(),
                     traffic: host.traffic_info.to_display_info(),
                 };
                 remote_hosts.push(host);

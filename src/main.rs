@@ -188,7 +188,7 @@ fn parse_args() -> ArgMatches {
         )
         // Sub-command for monitor mode.
         .subcommand(Command::new("monitor")
-            .about("Enter monitor mode. Monitor mode continuously displays live network statistics with Country and AS (or ISP) info.")
+            .about("Enter monitor mode. Monitor mode continuously displays live network statistics.")
             .arg(
                 Arg::new("interfaces")
                     .help("Specify the interfaces by name. Example: ntap monitor -i eth0,eth1")

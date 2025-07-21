@@ -1,4 +1,5 @@
 use crate::sys;
+use bytes::Bytes;
 use nex::packet::ethernet::EtherType;
 use nex::packet::frame::{DatalinkLayer, IpLayer, TransportLayer};
 use nex::packet::ip::IpNextProtocol;
@@ -23,7 +24,7 @@ pub struct PacketFrame {
     /// The transport layer.
     pub transport: Option<TransportLayer>,
     /// Rest of the packet that could not be parsed as a header. (Usually payload)
-    //pub payload: Vec<u8>,
+    pub payload: Bytes,
     /// Packet length.
     pub packet_len: usize,
     /// Packet arrival time. RFC3339 format.
@@ -39,7 +40,7 @@ impl PacketFrame {
             datalink: None,
             ip: None,
             transport: None,
-            //payload: Vec::new(),
+            payload: Bytes::new(),
             packet_len: 0,
             timestamp: String::new(),
         }
@@ -57,7 +58,7 @@ impl PacketFrame {
             datalink: frame.datalink,
             ip: frame.ip,
             transport: frame.transport,
-            //payload: frame.payload,
+            payload: frame.payload,
             packet_len: frame.packet_len,
             timestamp: sys::get_sysdate(),
         }

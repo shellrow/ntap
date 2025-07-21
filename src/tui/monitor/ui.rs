@@ -132,9 +132,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
                     host.ip_addr.to_string(),
                     ingress_traffic,
                     egress_traffic,
-                    host.country_code.clone(),
-                    host.asn.to_string(),
-                    host.as_name.clone(),
+                    host.hostname.clone(),
                 ])
             })
             .collect::<Vec<Row>>();
@@ -142,9 +140,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
             Constraint::Length(40),
             Constraint::Length(11),
             Constraint::Length(11),
-            Constraint::Length(8),
-            Constraint::Length(8),
-            Constraint::Length(24),
+            Constraint::Length(40),
         ];
 
         //let mut table_state = TableState::default();
@@ -155,9 +151,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
                     "IP Address",
                     "↓ Bytes",
                     "↑ Bytes",
-                    "Country",
-                    "ASN",
-                    "AS Name",
+                    "Hostname",
                 ])
                 .style(Style::new().bold()), //.bottom_margin(1),
             )
@@ -272,9 +266,7 @@ fn draw_remotehosts_table(f: &mut Frame, app: &mut App, area: Rect) {
                 host.ip_addr.to_string(),
                 ingress_traffic,
                 egress_traffic,
-                host.country_code.clone(),
-                host.asn.to_string(),
-                host.as_name.clone(),
+                host.hostname.clone(),
             ])
         })
         .collect::<Vec<Row>>();
@@ -282,9 +274,7 @@ fn draw_remotehosts_table(f: &mut Frame, app: &mut App, area: Rect) {
         Constraint::Length(40),
         Constraint::Length(11),
         Constraint::Length(11),
-        Constraint::Length(8),
-        Constraint::Length(8),
-        Constraint::Length(24),
+        Constraint::Length(40),
     ];
 
     //let mut table_state = TableState::default();
@@ -296,9 +286,7 @@ fn draw_remotehosts_table(f: &mut Frame, app: &mut App, area: Rect) {
                 "IP Address",
                 "↓ Bytes",
                 "↑ Bytes",
-                "Country",
-                "ASN",
-                "AS Name",
+                "Hostname",
             ])
             .style(Style::new().bold()), //.bottom_margin(1),
         )

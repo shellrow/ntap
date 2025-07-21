@@ -194,41 +194,17 @@ impl PrivacyConfig {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct DatabaseConfig {
-    pub ipv4_asn_db_path: String,
-    pub ipv6_asn_db_path: String,
-    pub ipv4_country_db_path: String,
-    pub ipv6_country_db_path: String,
-    pub country_db_path: String,
-    pub asn_db_path: String,
+    pub oui_db_path: String,
     pub tcp_service_db_path: String,
+    pub udp_service_db_path: String,
 }
 
 impl DatabaseConfig {
     pub fn new() -> DatabaseConfig {
-        /* DatabaseConfig {
-            ipv4_asn_db_path: db::ip::Ipv4Asn::bin_file_path().map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "".to_owned()),
-            ipv6_asn_db_path: db::ip::Ipv6Asn::bin_file_path().map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "".to_owned()),
-            ipv4_country_db_path: db::ip::Ipv4Country::bin_file_path().map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "".to_owned()),
-            ipv6_country_db_path: db::ip::Ipv6Country::bin_file_path().map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "".to_owned()),
-            country_db_path: db::ip::Country::bin_file_path().map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "".to_owned()),
-            asn_db_path: db::ip::AutonomousSystem::bin_file_path().map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "".to_owned()),
-            tcp_service_db_path: db::service::TcpService::bin_file_path().map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "".to_owned()),
-        } */
         DatabaseConfig {
-            ipv4_asn_db_path: String::new(),
-            ipv6_asn_db_path: String::new(),
-            ipv4_country_db_path: String::new(),
-            ipv6_country_db_path: String::new(),
-            country_db_path: String::new(),
-            asn_db_path: String::new(),
+            oui_db_path: String::new(),
             tcp_service_db_path: String::new(),
+            udp_service_db_path: String::new(),
         }
     }
 }
