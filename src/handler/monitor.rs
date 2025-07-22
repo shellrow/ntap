@@ -29,7 +29,7 @@ pub fn monitor(app: &ArgMatches) -> Result<()> {
         None => {
             let err_msg = "Could not get config directory path";
             log::error!("{err_msg}");
-            return Err(anyhow::anyhow!(err_msg));
+            anyhow::bail!(err_msg);
         }
     }
 
@@ -38,7 +38,7 @@ pub fn monitor(app: &ArgMatches) -> Result<()> {
         Ok(_) => {}
         Err(e) => {
             log::error!("Error: {:?}", e);
-            return Err(e);
+            anyhow::bail!(e.to_string());
         }
     }
 
