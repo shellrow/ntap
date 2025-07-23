@@ -2,6 +2,8 @@ use inquire::Confirm;
 use winreg::enums::HKEY_LOCAL_MACHINE;
 use winreg::RegKey;
 
+use crate::deps::DepsError;
+
 pub fn get_os_bit() -> String {
     if cfg!(target_pointer_width = "32") {
         return "32-bit".to_owned();
@@ -46,7 +48,7 @@ pub fn check_deps() -> Result<(), DepsError> {
                         .prompt()
                         .unwrap();
                         if ans == false {
-                            return Err("On windows, Npcap is required for ntap to work properly. Please install Npcap and try again.".into());
+                            return Err(DepsError::Missing("On windows, Npcap is required for ntap to work properly. Please install Npcap and try again.".to_string()));
                         }
                     }
                 }
