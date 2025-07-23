@@ -31,7 +31,7 @@ pub fn software_installed(software_name: String) -> bool {
     true
 }
 
-pub fn check_deps() -> Result<(), Box<dyn std::error::Error>> {
+pub fn check_deps() -> Result<(), DepsError> {
     match crate::deps::check_deps() {
         Ok(_) => {
             return Ok(());

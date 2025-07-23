@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::DepsError;
 
 // currently only implemented for windows
