@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 #[cfg(not(target_os = "windows"))]
 mod unix;
 #[cfg(not(target_os = "windows"))]
@@ -27,26 +25,4 @@ impl fmt::Display for DepsError {
             DepsError::Unknown(ref s) => write!(f, "unknown: {}", s),
         }
     }
-}
-
-// Check Database files
-pub fn check_db_files() -> Result<(), DepsError> {
-    let db_files = vec![
-        "oui.csv",
-        "tcp.csv",
-        "udp.csv",
-    ];
-    for file in db_files {
-        match crate::sys::get_db_file_path(file) {
-            Some(file_path) => {
-                if !file_path.exists() {
-                    return Err(DepsError::Missing(file.to_string()));
-                }
-            }
-            None => {
-                return Err(DepsError::Unknown(file.to_string()));
-            }
-        }
-    }
-    Ok(())
 }
