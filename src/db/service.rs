@@ -6,10 +6,10 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 pub const TCP_SERVICE_CSV_NAME: &str = "tcp.csv";
-pub const TCP_SERVICE_R2_URL: &str = "https://example.com/tcp_service.csv"; // Replace with actual URL
+pub const TCP_SERVICE_R2_URL: &str = "https://r2.ntap.io/tcp-services.csv";
 
 pub const UDP_SERVICE_CSV_NAME: &str = "udp.csv";
-pub const UDP_SERVICE_R2_URL: &str = "https://example.com/udp_service.csv"; // Replace with actual URL
+pub const UDP_SERVICE_R2_URL: &str = "https://r2.ntap.io/udp-services.csv";
 
 #[cfg(not(feature = "bundled"))]
 pub fn get_tcp_db_filepath() -> Option<PathBuf> {

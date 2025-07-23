@@ -5,7 +5,7 @@ use ndb_oui::OuiDb;
 use std::path::PathBuf;
 
 pub const OUI_CSV_NAME: &str = "oui.csv";
-pub const OUI_R2_URL: &str = "https://example.com/oui.csv"; // Replace with actual URL
+pub const OUI_R2_URL: &str = "https://r2.ntap.io/oui.csv";
 
 #[cfg(not(feature = "bundled"))]
 pub fn get_oui_db_filepath() -> Option<PathBuf> {
