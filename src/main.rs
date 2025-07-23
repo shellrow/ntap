@@ -10,11 +10,11 @@ mod time;
 mod tui;
 mod util;
 
+use anyhow::Result;
 use clap::{crate_description, crate_name, crate_version, value_parser};
 use clap::{Arg, ArgMatches, Command};
 use handler::AppCommands;
 use std::net::IpAddr;
-use anyhow::Result;
 
 fn main() -> Result<()> {
     // Parse command line arguments

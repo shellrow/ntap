@@ -1,9 +1,9 @@
 use crate::config::AppConfig;
+use anyhow::Result;
 use std::{
     fs::File,
     path::{Path, PathBuf},
 };
-use anyhow::Result;
 
 fn download_file(
     url: &str,

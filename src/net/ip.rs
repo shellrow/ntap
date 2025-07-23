@@ -1,6 +1,6 @@
+use anyhow::Result;
 use ipnet::{Ipv4Net, Ipv6Net};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use anyhow::Result;
 
 pub fn get_network_address(ip_addr: IpAddr) -> Result<String> {
     match ip_addr {

@@ -1,7 +1,7 @@
 use crate::config::AppConfig;
 use crate::net::stat::NetStatStrage;
-use std::collections::HashSet;
 use anyhow::Result;
+use std::collections::HashSet;
 use std::fs::File;
 use std::net::IpAddr;
 use std::path::Path;

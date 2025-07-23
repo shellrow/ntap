@@ -38,25 +38,23 @@ pub fn check_deps() -> Result<(), DepsError> {
         Ok(_) => {
             return Ok(());
         }
-        Err(e) => {
-            match e {
-                crate::deps::DepsError::Missing(s) => {
-                    if s == crate::deps::NPCAP_SOFTWARE_NAME.to_string() {
-                        let ans: bool = Confirm::new(
-                            "Npcap is not installed, would you like to download & install it ?",
-                        )
-                        .prompt()
-                        .unwrap();
-                        if ans == false {
-                            return Err(DepsError::Missing("On windows, Npcap is required for ntap to work properly. Please install Npcap and try again.".to_string()));
-                        }
+        Err(e) => match e {
+            crate::deps::DepsError::Missing(s) => {
+                if s == crate::deps::NPCAP_SOFTWARE_NAME.to_string() {
+                    let ans: bool = Confirm::new(
+                        "Npcap is not installed, would you like to download & install it ?",
+                    )
+                    .prompt()
+                    .unwrap();
+                    if ans == false {
+                        return Err(DepsError::Missing("On windows, Npcap is required for ntap to work properly. Please install Npcap and try again.".to_string()));
                     }
                 }
-                crate::deps::DepsError::Unknown(s) => {
-                    eprintln!("Error: Unknown dependency: {}", s);
-                }
             }
-        }
+            crate::deps::DepsError::Unknown(s) => {
+                eprintln!("Error: Unknown dependency: {}", s);
+            }
+        },
     }
     Ok(())
 }

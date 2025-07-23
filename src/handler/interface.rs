@@ -1,8 +1,8 @@
 use crate::util::tree::node_label;
+use anyhow::Result;
 use netdev::mac::MacAddr;
 use netdev::Interface;
 use termtree::Tree;
-use anyhow::Result;
 
 pub fn show_interfaces() -> Result<()> {
     let interfaces: Vec<Interface> = netdev::get_interfaces();

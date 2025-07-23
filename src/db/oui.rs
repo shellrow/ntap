@@ -28,9 +28,8 @@ pub fn get_oui_db() -> Result<OuiDb> {
 
 #[cfg(not(feature = "bundled"))]
 pub fn get_oui_db() -> Result<OuiDb> {
-    let path = get_oui_db_filepath().ok_or_else(|| {
-        anyhow::anyhow!("Failed to get OUI database file path")
-    })?;
+    let path = get_oui_db_filepath()
+        .ok_or_else(|| anyhow::anyhow!("Failed to get OUI database file path"))?;
     let reader = std::fs::File::open(path)
         .map_err(|e| anyhow::anyhow!("Failed to open OUI database file: {}", e))?;
     OuiDb::from_csv(reader)

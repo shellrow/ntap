@@ -1,8 +1,8 @@
+use anyhow::Result;
 use std::{
     io,
     time::{Duration, Instant},
 };
-use anyhow::Result;
 
 use crate::config::AppConfig;
 use crate::{net::packet::PacketStorage, sys};

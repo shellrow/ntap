@@ -1,10 +1,10 @@
 use crate::net::socket::{AddressFamily, SocketInfoOption, TransportProtocol};
+use anyhow::Result;
 use clap::ArgMatches;
 use comfy_table::presets::NOTHING;
 use comfy_table::*;
 use nex::packet::ethernet::EtherType;
 use nex::packet::ip::IpNextProtocol;
-use anyhow::Result;
 
 pub fn show_socket_info(app: &ArgMatches) -> Result<()> {
     let sub_args = match app.subcommand_matches("socket") {

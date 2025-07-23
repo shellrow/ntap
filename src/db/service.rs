@@ -1,6 +1,6 @@
+use anyhow::Result;
 use ndb_tcp_service::TcpServiceDb;
 use ndb_udp_service::UdpServiceDb;
-use anyhow::Result;
 
 #[cfg(not(feature = "bundled"))]
 use std::path::PathBuf;
@@ -46,9 +46,8 @@ pub fn get_tcp_service_db() -> Result<TcpServiceDb> {
 
 #[cfg(not(feature = "bundled"))]
 pub fn get_tcp_service_db() -> Result<TcpServiceDb> {
-    let path = get_tcp_db_filepath().ok_or_else(|| {
-        anyhow::anyhow!("Failed to get TCP database file path")
-    })?;
+    let path = get_tcp_db_filepath()
+        .ok_or_else(|| anyhow::anyhow!("Failed to get TCP database file path"))?;
     let reader = std::fs::File::open(path)
         .map_err(|e| anyhow::anyhow!("Failed to open TCP database file: {}", e))?;
     TcpServiceDb::from_csv(reader)
@@ -61,9 +60,8 @@ pub fn get_udp_service_db() -> Result<UdpServiceDb> {
 
 #[cfg(not(feature = "bundled"))]
 pub fn get_udp_service_db() -> Result<UdpServiceDb> {
-    let path = get_udp_db_filepath().ok_or_else(|| {
-        anyhow::anyhow!("Failed to get UDP database file path")
-    })?;
+    let path = get_udp_db_filepath()
+        .ok_or_else(|| anyhow::anyhow!("Failed to get UDP database file path"))?;
     let reader = std::fs::File::open(path)
         .map_err(|e| anyhow::anyhow!("Failed to open UDP database file: {}", e))?;
     UdpServiceDb::from_csv(reader)

@@ -1,5 +1,6 @@
 use crate::config::AppConfig;
 use crate::net::packet::{PacketFrame, PacketStorage};
+use anyhow::Result;
 use std::collections::HashSet;
 use std::fs::File;
 use std::net::IpAddr;
@@ -7,7 +8,6 @@ use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
-use anyhow::Result;
 
 use clap::ArgMatches;
 use nex::packet::ethernet::EtherType;

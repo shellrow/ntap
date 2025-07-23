@@ -5,6 +5,7 @@ use std::{
 
 use crate::{config::AppConfig, net::stat::NetStatStrage};
 use crate::{sys, tui::stat::app::App, tui::stat::ui};
+use anyhow::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
@@ -12,7 +13,6 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 use std::sync::Arc;
-use anyhow::Result;
 
 pub fn run(
     app_config: AppConfig,

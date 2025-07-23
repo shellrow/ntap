@@ -1,8 +1,8 @@
+use anyhow::Result;
 use std::{
     io,
     time::{Duration, Instant},
 };
-use anyhow::Result;
 
 use crate::{config::AppConfig, net::stat::NetStatStrage};
 use crate::{sys, tui::monitor::app::App, tui::monitor::ui};

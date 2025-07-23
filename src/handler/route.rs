@@ -1,9 +1,9 @@
 use std::net::{Ipv4Addr, Ipv6Addr};
 
+use anyhow::Result;
 use comfy_table::presets::NOTHING;
 use comfy_table::*;
 use netdev::interface::InterfaceType;
-use anyhow::Result;
 
 pub fn show_routes() -> Result<()> {
     let interfaces = netdev::get_interfaces();
@@ -51,7 +51,8 @@ pub fn show_routes() -> Result<()> {
                 }
             }
         } else {
-            if iface.if_type == InterfaceType::Loopback || iface.ipv4[0].addr() == Ipv4Addr::LOCALHOST
+            if iface.if_type == InterfaceType::Loopback
+                || iface.ipv4[0].addr() == Ipv4Addr::LOCALHOST
             {
                 table.add_row(vec![
                     Cell::new(iface.name),
@@ -108,7 +109,8 @@ pub fn show_routes() -> Result<()> {
                 }
             }
         } else {
-            if iface.if_type == InterfaceType::Loopback || iface.ipv6[0].addr() == Ipv6Addr::LOCALHOST
+            if iface.if_type == InterfaceType::Loopback
+                || iface.ipv6[0].addr() == Ipv6Addr::LOCALHOST
             {
                 table.add_row(vec![
                     Cell::new(iface.name),

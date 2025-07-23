@@ -256,16 +256,14 @@ impl NetStatStrage {
             let mut ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
             for query in &dns.queries {
                 match query.qtype {
-                    DnsType::A | DnsType::AAAA => {
-                        match query.get_qname_parsed() {
-                            Ok(qname) => {
-                                name = qname.to_string();
-                            }
-                            Err(e) => {
-                                tracing::error!("Failed to parse query name: {:?}", e);
-                            }
+                    DnsType::A | DnsType::AAAA => match query.get_qname_parsed() {
+                        Ok(qname) => {
+                            name = qname.to_string();
                         }
-                    }
+                        Err(e) => {
+                            tracing::error!("Failed to parse query name: {:?}", e);
+                        }
+                    },
                     _ => {}
                 }
             }
@@ -275,7 +273,10 @@ impl NetStatStrage {
                         if let Some(ip) = response.get_ip() {
                             ip_addr = ip;
                         } else {
-                            tracing::error!("Failed to get IP address from response: {:?}", response);
+                            tracing::error!(
+                                "Failed to get IP address from response: {:?}",
+                                response
+                            );
                         }
                     }
                     _ => {}
@@ -559,9 +560,14 @@ impl NetStatStrage {
             hostname = name.to_string();
         }
         // Update or Insert RemoteHostInfo
-        let remote_host: &mut RemoteHostInfo = remote_hosts_inner
-            .entry(remote_ip_addr)
-            .or_insert(RemoteHostInfo::new(mac_addr, remote_ip_addr, hostname.clone()));
+        let remote_host: &mut RemoteHostInfo =
+            remote_hosts_inner
+                .entry(remote_ip_addr)
+                .or_insert(RemoteHostInfo::new(
+                    mac_addr,
+                    remote_ip_addr,
+                    hostname.clone(),
+                ));
         match direction {
             Direction::Egress => {
                 remote_host.traffic_info.packet_sent += 1;
@@ -575,7 +581,7 @@ impl NetStatStrage {
         if remote_host.hostname.is_empty() && !hostname.is_empty() {
             remote_host.hostname = hostname.clone();
         }
-        
+
         // Drop the locks
         drop(traffic_inner);
         drop(remote_hosts_inner);
@@ -983,12 +989,14 @@ impl NetStatData {
                     port: protocol_port.port,
                     protocol: protocol_port.protocol.as_str().to_string(),
                     name: match protocol_port.protocol {
-                        TransportProtocol::TCP => tcp_db.get_name(protocol_port.port).unwrap_or(
-                            "Unknown TCP Service",
-                        ).to_string(),
-                        TransportProtocol::UDP => udp_db.get_name(protocol_port.port).unwrap_or(
-                            "Unknown UDP Service",
-                        ).to_string(),
+                        TransportProtocol::TCP => tcp_db
+                            .get_name(protocol_port.port)
+                            .unwrap_or("Unknown TCP Service")
+                            .to_string(),
+                        TransportProtocol::UDP => udp_db
+                            .get_name(protocol_port.port)
+                            .unwrap_or("Unknown UDP Service")
+                            .to_string(),
                     },
                     traffic: traffic.to_display_info(),
                 };
