@@ -98,12 +98,12 @@ impl LogLevel {
         }
         .to_owned()
     }
-    pub fn to_level_filter(&self) -> simplelog::LevelFilter {
+    pub fn to_level_filter(&self) -> tracing::Level {
         match self {
-            LogLevel::DEBUG => simplelog::LevelFilter::Debug,
-            LogLevel::INFO => simplelog::LevelFilter::Info,
-            LogLevel::WARN => simplelog::LevelFilter::Warn,
-            LogLevel::ERROR => simplelog::LevelFilter::Error,
+            LogLevel::DEBUG => tracing::Level::DEBUG,
+            LogLevel::INFO => tracing::Level::INFO,
+            LogLevel::WARN => tracing::Level::WARN,
+            LogLevel::ERROR => tracing::Level::ERROR,
         }
     }
 }

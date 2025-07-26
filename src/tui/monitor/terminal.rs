@@ -25,7 +25,7 @@ pub fn run(
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-
+    terminal.clear()?;
     // create app and run it
     let title = sys::get_app_title();
     let app = App::new(&title, enhanced_graphics, app_config);

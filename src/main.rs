@@ -6,9 +6,9 @@ mod net;
 mod notification;
 mod process;
 mod sys;
-mod time;
 mod tui;
 mod util;
+mod log;
 
 use anyhow::Result;
 use clap::{crate_description, crate_name, crate_version, value_parser};

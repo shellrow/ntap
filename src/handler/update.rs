@@ -1,9 +1,7 @@
-use crate::config::AppConfig;
 use anyhow::Result;
-use std::{
-    fs::File,
-    path::{Path, PathBuf},
-};
+use tracing::Level;
+use tracing_subscriber::{fmt::time::ChronoLocal, FmtSubscriber};
+use std::path::PathBuf;
 
 fn download_file(
     url: &str,
@@ -52,43 +50,13 @@ fn download_file(
 }
 
 pub fn download_db_files() -> Result<()> {
-    // Load AppConfig
-    let config = AppConfig::load();
     // Init logger
-    let log_file_path = if let Some(file_path) = &config.logging.file_path {
-        // Convert to PathBuf
-        Path::new(&file_path).to_path_buf()
-    } else {
-        crate::sys::get_user_file_path(crate::config::DEFAULT_LOG_FILE_PATH).unwrap()
-    };
-    let log_file: File = if log_file_path.exists() {
-        File::options().write(true).open(&log_file_path)?
-    } else {
-        File::create(&log_file_path)?
-    };
-    let mut log_config_builder = simplelog::ConfigBuilder::default();
-    log_config_builder.set_time_format_rfc3339();
-    if let Some(offset) = crate::time::get_local_offset() {
-        log_config_builder.set_time_offset(offset);
-    }
-    let default_log_config = log_config_builder.build();
-
-    // Init logger with file and terminal output
-    // debug build: log to terminal and file
-    // release build: log to file only
-    simplelog::CombinedLogger::init(vec![
-        simplelog::TermLogger::new(
-            simplelog::LevelFilter::Info,
-            default_log_config.clone(),
-            simplelog::TerminalMode::Mixed,
-            simplelog::ColorChoice::Auto,
-        ),
-        simplelog::WriteLogger::new(
-            config.logging.level.to_level_filter(),
-            default_log_config,
-            log_file,
-        ),
-    ])?;
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .with_target(false)
+        .with_timer(ChronoLocal::rfc_3339())
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let database_dir = crate::sys::get_database_dir_path().unwrap();
     // OUI
@@ -116,7 +84,7 @@ pub fn download_db_files() -> Result<()> {
     // UDP Service
     match download_file(
         crate::db::service::UDP_SERVICE_R2_URL,
-        database_dir.clone(),
+        database_dir,
         crate::db::service::UDP_SERVICE_CSV_NAME,
     ) {
         Ok(_) => {}
@@ -124,6 +92,6 @@ pub fn download_db_files() -> Result<()> {
             tracing::error!("{:?}", e);
         }
     }
-    log::info!("Successfully downloaded ntap databases.");
+    tracing::info!("Successfully downloaded ntap databases.");
     Ok(())
 }

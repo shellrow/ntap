@@ -2,9 +2,7 @@ use crate::config::AppConfig;
 use crate::net::stat::NetStatStrage;
 use anyhow::Result;
 use std::collections::HashSet;
-use std::fs::File;
 use std::net::IpAddr;
-use std::path::Path;
 use std::sync::Arc;
 use std::thread;
 
@@ -28,7 +26,7 @@ pub fn monitor(app: &ArgMatches) -> Result<()> {
         Some(_config_dir) => {}
         None => {
             let err_msg = "Could not get config directory path";
-            log::error!("{err_msg}");
+            tracing::error!("{err_msg}");
             anyhow::bail!(err_msg);
         }
     }
@@ -37,7 +35,7 @@ pub fn monitor(app: &ArgMatches) -> Result<()> {
     match crate::sys::check_deps() {
         Ok(_) => {}
         Err(e) => {
-            log::error!("Error: {:?}", e);
+            tracing::error!("Error: {:?}", e);
             anyhow::bail!(e.to_string());
         }
     }
@@ -47,7 +45,7 @@ pub fn monitor(app: &ArgMatches) -> Result<()> {
     match crate::deps::check_db_files() {
         Ok(_) => {}
         Err(e) => {
-            log::error!("{}", e.to_string());
+            tracing::error!("{}", e.to_string());
             let ans: bool =
                 Confirm::new("ntap databases are missing. Do you want to download them now?")
                     .prompt()
@@ -64,6 +62,9 @@ pub fn monitor(app: &ArgMatches) -> Result<()> {
 
     // Load AppConfig
     let mut config = AppConfig::load();
+
+    // Initialize logger
+    crate::log::init_logger(&config)?;
 
     if app.contains_id("tickrate") {
         config.display.tick_rate = *app.get_one("tickrate").unwrap_or(&1000);
@@ -124,49 +125,6 @@ pub fn monitor(app: &ArgMatches) -> Result<()> {
         }
     }
 
-    // Init logger
-    let log_file_path = if let Some(file_path) = &config.logging.file_path {
-        // Convert to PathBuf
-        Path::new(&file_path).to_path_buf()
-    } else {
-        crate::sys::get_user_file_path(crate::config::DEFAULT_LOG_FILE_PATH).unwrap()
-    };
-    let log_file: File = if log_file_path.exists() {
-        File::options().write(true).open(&log_file_path)?
-    } else {
-        File::create(&log_file_path)?
-    };
-    let mut log_config_builder = simplelog::ConfigBuilder::default();
-    log_config_builder.set_time_format_rfc3339();
-    if let Some(offset) = crate::time::get_local_offset() {
-        log_config_builder.set_time_offset(offset);
-    }
-    let default_log_config = log_config_builder.build();
-
-    // Init logger with file and terminal output
-    // debug build: log to terminal and file
-    // release build: log to file only
-    if cfg!(debug_assertions) {
-        simplelog::CombinedLogger::init(vec![
-            simplelog::TermLogger::new(
-                simplelog::LevelFilter::Info,
-                default_log_config.clone(),
-                simplelog::TerminalMode::Mixed,
-                simplelog::ColorChoice::Auto,
-            ),
-            simplelog::WriteLogger::new(
-                config.logging.level.to_level_filter(),
-                default_log_config,
-                log_file,
-            ),
-        ])?;
-    } else {
-        simplelog::CombinedLogger::init(vec![simplelog::WriteLogger::new(
-            config.logging.level.to_level_filter(),
-            default_log_config,
-            log_file,
-        )])?;
-    }
     // Start threads
     let mut threads: Vec<thread::JoinHandle<()>> = vec![];
 
@@ -236,15 +194,6 @@ pub fn monitor(app: &ArgMatches) -> Result<()> {
     }
 
     tracing::info!("start TUI, netstat_data_update");
-
-    // Clear screen before starting TUI
-    let mut stdout = std::io::stdout();
-    crossterm::execute!(
-        stdout,
-        crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
-    )?;
-    // Move cursor to top left corner
-    crossterm::execute!(stdout, crossterm::cursor::MoveTo(0, 0))?;
 
     crate::tui::monitor::terminal::run(
         config,
