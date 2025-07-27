@@ -2,13 +2,13 @@ mod config;
 mod db;
 mod deps;
 mod handler;
+mod log;
 mod net;
 mod notification;
 mod process;
 mod sys;
 mod tui;
 mod util;
-mod log;
 
 use anyhow::Result;
 use clap::{crate_description, crate_name, crate_version, value_parser};

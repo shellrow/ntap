@@ -151,8 +151,15 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
         let table = Table::new(rows, widths)
             .column_spacing(1)
             .header(
-                Row::new(vec!["IP Address", "↓ Bytes", "↑ Bytes", "Country", "AS Name", "Hostname"])
-                    .style(Style::new().bold()), //.bottom_margin(1),
+                Row::new(vec![
+                    "IP Address",
+                    "↓ Bytes",
+                    "↑ Bytes",
+                    "Country",
+                    "AS Name",
+                    "Hostname",
+                ])
+                .style(Style::new().bold()), //.bottom_margin(1),
             )
             .block(
                 Block::default()
@@ -285,8 +292,15 @@ fn draw_remotehosts_table(f: &mut Frame, app: &mut App, area: Rect) {
         .column_spacing(1)
         //.style(Style::new().blue())
         .header(
-            Row::new(vec!["IP Address", "↓ Bytes", "↑ Bytes", "Country", "AS Name", "Hostname"])
-                .style(Style::new().bold()), //.bottom_margin(1),
+            Row::new(vec![
+                "IP Address",
+                "↓ Bytes",
+                "↑ Bytes",
+                "Country",
+                "AS Name",
+                "Hostname",
+            ])
+            .style(Style::new().bold()), //.bottom_margin(1),
         )
         .block(
             Block::default()

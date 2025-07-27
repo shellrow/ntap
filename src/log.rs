@@ -1,11 +1,11 @@
 use anyhow::Result;
-use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
 use std::fs::File;
 use std::path::Path;
+use tracing::Level;
 use tracing_subscriber::fmt::time::ChronoLocal;
-use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::fmt::writer::BoxMakeWriter;
+use tracing_subscriber::fmt::writer::MakeWriterExt;
+use tracing_subscriber::FmtSubscriber;
 
 pub fn init_logger(config: &crate::config::AppConfig) -> Result<()> {
     // Init logger
@@ -33,7 +33,8 @@ pub fn init_logger(config: &crate::config::AppConfig) -> Result<()> {
             .with_timer(ChronoLocal::rfc_3339())
             .with_writer(writer)
             .finish();
-        tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("setting default subscriber failed");
     } else {
         // In release mode, log only to the error log file
         let error_writer = error_log.with_max_level(Level::ERROR);
@@ -44,8 +45,9 @@ pub fn init_logger(config: &crate::config::AppConfig) -> Result<()> {
             .with_timer(ChronoLocal::rfc_3339())
             .with_writer(error_writer)
             .finish();
-        tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("setting default subscriber failed");
     }
-    
+
     Ok(())
 }
