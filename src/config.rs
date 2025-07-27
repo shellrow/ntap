@@ -116,7 +116,7 @@ pub struct LoggingConfig {
 impl LoggingConfig {
     pub fn new() -> LoggingConfig {
         LoggingConfig {
-            level: LogLevel::ERROR,
+            level: LogLevel::INFO,
             file_path: if let Some(path) = sys::get_user_file_path(DEFAULT_LOG_FILE_PATH) {
                 Some(path.to_string_lossy().to_string())
             } else {
