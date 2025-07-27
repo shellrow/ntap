@@ -12,10 +12,6 @@ pub fn get_network_address(ip_addr: IpAddr) -> Result<String> {
             let net: Ipv6Net = Ipv6Net::new(ipv6_addr, 24)?;
             Ok(net.network().to_string())
         }
-        IpAddr::V6(ipv6_addr) => {
-            let net: Ipv6Net = Ipv6Net::new(ipv6_addr, 24)?;
-            Ok(net.network().to_string())
-        }
     }
 }
 
