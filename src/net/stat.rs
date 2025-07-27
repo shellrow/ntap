@@ -756,6 +756,13 @@ impl NetStatData {
     }
 
     pub fn get_remote_hosts(&self, limit: Option<usize>) -> Vec<HostDisplayInfo> {
+        let ipv4_asn_db = crate::db::IPV4_ASN_DB.get().unwrap().read().unwrap();
+        let ipv4_country_db = crate::db::IPV4_COUNTRY_DB.get().unwrap().read().unwrap();
+        let ipv6_asn_db = crate::db::IPV6_ASN_DB.get().unwrap().read().unwrap();
+        let ipv6_country_db = crate::db::IPV6_COUNTRY_DB.get().unwrap().read().unwrap();
+        let as_db = crate::db::AS_DB.get().unwrap().read().unwrap();
+
+        // Create a map to store the traffic info for each remote host.
         let mut host_traffic_map: HashMap<IpAddr, usize> = HashMap::new();
         self.remote_hosts.iter().for_each(|(_ip, host)| {
             match host_traffic_map.get(&host.ip_addr) {
@@ -785,6 +792,42 @@ impl NetStatData {
                 let host = HostDisplayInfo {
                     ip_addr: host.ip_addr,
                     hostname: host.hostname.clone(),
+                    country_code: {
+                        if nex::net::ip::is_global_ip(&host.ip_addr) {
+                            match host.ip_addr {
+                                IpAddr::V4(ipv4) => {
+                                    match ipv4_country_db.lookup(ipv4) {
+                                        Some(country) => country.to_string(),
+                                        None => "N/A".to_string(),
+                                    }
+                                },
+                                IpAddr::V6(ipv6) => {
+                                    match ipv6_country_db.lookup(ipv6) {
+                                        Some(country) => country.to_string(),
+                                        None => "N/A".to_string(),
+                                    }
+                                },
+                            }
+                        } else {
+                            String::from("N/A")
+                        }
+                    },
+                    as_name: {
+                        if nex::net::ip::is_global_ip(&host.ip_addr) {
+                            match host.ip_addr {
+                                IpAddr::V4(ipv4) => ipv4_asn_db
+                                    .lookup(ipv4)
+                                    .and_then(|asn| as_db.get_name(*asn))
+                                    .map_or_else(|| String::from("N/A"), |asn| asn.to_string()),
+                                IpAddr::V6(ipv6) => ipv6_asn_db
+                                    .lookup(ipv6)
+                                    .and_then(|asn| as_db.get_name(*asn))
+                                    .map_or_else(|| String::from("N/A"), |asn| asn.to_string()),
+                            }
+                        } else {
+                            String::from("N/A")
+                        }
+                    },
                     traffic: host.traffic_info.to_display_info(),
                 };
                 remote_hosts.push(host);

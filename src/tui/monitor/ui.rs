@@ -132,6 +132,8 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
                     host.ip_addr.to_string(),
                     ingress_traffic,
                     egress_traffic,
+                    host.country_code.clone(),
+                    host.as_name.clone(),
                     host.hostname.clone(),
                 ])
             })
@@ -140,6 +142,8 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
             Constraint::Length(40),
             Constraint::Length(11),
             Constraint::Length(11),
+            Constraint::Length(8),
+            Constraint::Length(30),
             Constraint::Length(40),
         ];
 
@@ -147,7 +151,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
         let table = Table::new(rows, widths)
             .column_spacing(1)
             .header(
-                Row::new(vec!["IP Address", "↓ Bytes", "↑ Bytes", "Hostname"])
+                Row::new(vec!["IP Address", "↓ Bytes", "↑ Bytes", "Country", "AS Name", "Hostname"])
                     .style(Style::new().bold()), //.bottom_margin(1),
             )
             .block(
@@ -261,6 +265,8 @@ fn draw_remotehosts_table(f: &mut Frame, app: &mut App, area: Rect) {
                 host.ip_addr.to_string(),
                 ingress_traffic,
                 egress_traffic,
+                host.country_code.clone(),
+                host.as_name.clone(),
                 host.hostname.clone(),
             ])
         })
@@ -269,6 +275,8 @@ fn draw_remotehosts_table(f: &mut Frame, app: &mut App, area: Rect) {
         Constraint::Length(40),
         Constraint::Length(11),
         Constraint::Length(11),
+        Constraint::Length(8),
+        Constraint::Length(30),
         Constraint::Length(40),
     ];
 
@@ -277,7 +285,7 @@ fn draw_remotehosts_table(f: &mut Frame, app: &mut App, area: Rect) {
         .column_spacing(1)
         //.style(Style::new().blue())
         .header(
-            Row::new(vec!["IP Address", "↓ Bytes", "↑ Bytes", "Hostname"])
+            Row::new(vec!["IP Address", "↓ Bytes", "↑ Bytes", "Country", "AS Name", "Hostname"])
                 .style(Style::new().bold()), //.bottom_margin(1),
         )
         .block(

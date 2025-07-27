@@ -36,6 +36,9 @@ pub fn show_stat_default(app: &ArgMatches) -> Result<()> {
     // Initialize logger
     crate::log::init_logger(&config)?;
 
+    // Initialize DB
+    crate::db::init_databases()?;
+
     if app.contains_id("tickrate") {
         config.display.tick_rate = *app.get_one("tickrate").unwrap_or(&1000);
     }
@@ -206,6 +209,9 @@ pub fn show_stat(app: &ArgMatches) -> Result<()> {
 
     // Initialize logger
     crate::log::init_logger(&config)?;
+
+    // Initialize DB
+    crate::db::init_databases()?;
 
     if app.contains_id("tickrate") {
         config.display.tick_rate = *app.get_one("tickrate").unwrap_or(&1000);

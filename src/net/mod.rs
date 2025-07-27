@@ -2,7 +2,7 @@
 
 pub mod dns;
 pub mod host;
-pub mod http;
+//pub mod http;
 pub mod interface;
 pub mod ip;
 pub mod packet;

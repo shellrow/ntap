@@ -22,11 +22,6 @@ fn main() -> Result<()> {
     let subcommand_name = args.subcommand_name().unwrap_or("");
     let app_command = AppCommands::from_str(subcommand_name);
 
-    // Initialize DB
-    db::init_tcp_service_db()?;
-    db::init_udp_service_db()?;
-    db::init_oui_db()?;
-
     match app_command {
         AppCommands::Stat => handler::stat::show_stat(&args),
         AppCommands::Live => handler::live::live_capture(&args),
@@ -35,7 +30,7 @@ fn main() -> Result<()> {
         AppCommands::Interface => handler::interface::show_default_interface(),
         AppCommands::Route => handler::route::show_routes(),
         AppCommands::Socket => handler::socket::show_socket_info(&args),
-        AppCommands::Update => handler::update::download_db_files(),
+        //AppCommands::Update => handler::update::download_db_files(),
         AppCommands::Default => {
             // If no subcommand is specified, enter stat mode by default
             handler::stat::show_stat_default(&args)
@@ -253,9 +248,9 @@ fn parse_args() -> ArgMatches {
             .about("Show IP routing table")
         )
         // Sub-command for update ntap database
-        .subcommand(Command::new("update")
-            .about("Update ntap database")
-        )
+        //.subcommand(Command::new("update")
+        //    .about("Update ntap database")
+        //)
         ;
     app.get_matches()
 }

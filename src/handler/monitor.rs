@@ -8,8 +8,9 @@ use std::thread;
 
 use clap::ArgMatches;
 
-#[cfg(not(feature = "bundled"))]
-use inquire::Confirm;
+//#[cfg(not(feature = "bundled"))]
+//use inquire::Confirm;
+
 use nex::packet::ethernet::EtherType;
 use nex::packet::ip::IpNextProtocol;
 
@@ -40,7 +41,7 @@ pub fn monitor(app: &ArgMatches) -> Result<()> {
         }
     }
 
-    // Check Database files
+    /* // Check Database files
     #[cfg(not(feature = "bundled"))]
     match crate::deps::check_db_files() {
         Ok(_) => {}
@@ -58,13 +59,16 @@ pub fn monitor(app: &ArgMatches) -> Result<()> {
                 return Err(e.to_string().into());
             }
         }
-    }
+    } */
 
     // Load AppConfig
     let mut config = AppConfig::load();
 
     // Initialize logger
     crate::log::init_logger(&config)?;
+
+    // Initialize DB
+    crate::db::init_databases()?;
 
     if app.contains_id("tickrate") {
         config.display.tick_rate = *app.get_one("tickrate").unwrap_or(&1000);

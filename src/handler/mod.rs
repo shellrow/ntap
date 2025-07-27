@@ -4,7 +4,7 @@ pub mod monitor;
 pub mod route;
 pub mod socket;
 pub mod stat;
-pub mod update;
+//pub mod update;
 
 pub enum AppCommands {
     Stat,
@@ -14,7 +14,7 @@ pub enum AppCommands {
     Interface,
     Route,
     Socket,
-    Update,
+    //Update,
     Default,
 }
 
@@ -28,7 +28,7 @@ impl AppCommands {
             "interface" => AppCommands::Interface,
             "route" => AppCommands::Route,
             "socket" => AppCommands::Socket,
-            "update" => AppCommands::Update,
+            //"update" => AppCommands::Update,
             _ => AppCommands::Default,
         }
     }

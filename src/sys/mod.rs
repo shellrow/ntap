@@ -51,7 +51,7 @@ pub fn get_user_file_path(file_name: &str) -> Option<PathBuf> {
     }
 }
 
-pub fn get_database_dir_path() -> Option<PathBuf> {
+/* pub fn get_database_dir_path() -> Option<PathBuf> {
     match get_config_dir_path() {
         Some(mut path) => {
             path.push("db");
@@ -68,4 +68,4 @@ pub fn get_database_dir_path() -> Option<PathBuf> {
         }
         None => None,
     }
-}
+} */

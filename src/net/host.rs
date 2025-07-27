@@ -35,5 +35,7 @@ impl RemoteHostInfo {
 pub struct HostDisplayInfo {
     pub ip_addr: IpAddr,
     pub hostname: String,
+    pub country_code: String,
+    pub as_name: String,
     pub traffic: TrafficDisplayInfo,
 }
