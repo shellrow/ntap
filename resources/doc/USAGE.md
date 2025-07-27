@@ -55,11 +55,6 @@ ntap interface
 ntap route
 ```
 
-### ipinfo: Displays public IP information.
-```bash
-ntap ipinfo
-```
-
 ### help: Prints the main help message or help for a specific command.
 ```bash
 ntap help
