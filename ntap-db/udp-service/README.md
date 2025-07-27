@@ -1,1 +1,0 @@
-# ntap-db-udp-service

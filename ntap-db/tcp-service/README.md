@@ -1,1 +1,0 @@
-# ntap-db-tcp-service

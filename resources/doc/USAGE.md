@@ -30,7 +30,7 @@ ntap stat
 ntap live
 ```
 
-### monitor: Enters monitor mode to continuously display live network usage statistics with associated country and AS (or ISP) info.
+### monitor: Enters monitor mode to continuously display live network usage statistics.
 ```bash
 ntap monitor
 ```
@@ -53,11 +53,6 @@ ntap interface
 ### route: Shows the IP routing table.
 ```bash
 ntap route
-```
-
-### ipinfo: Displays public IP information.
-```bash
-ntap ipinfo
 ```
 
 ### help: Prints the main help message or help for a specific command.
