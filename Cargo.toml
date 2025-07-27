@@ -1,6 +1,6 @@
 [package]
 name = "ntap"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["shellrow <shellrow@foctal.com>"]
 description = "Network traffic monitor/analyzer"
