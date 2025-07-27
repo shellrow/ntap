@@ -349,18 +349,16 @@ pub fn start_dns_map_update(netstat_strage: &mut Arc<NetStatStrage>) {
 }
 
 pub struct DnsResolver {
-    //pub dns_map: HashMap<IpAddr, String>,
+    rt: tokio::runtime::Runtime,
 }
 
 impl DnsResolver {
     pub fn new() -> Self {
-        DnsResolver {
-            //dns_map: HashMap::new(),
-        }
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+        DnsResolver { rt }
     }
-    pub fn lookup_ips(&mut self, ips: Vec<IpAddr>) -> HashMap<IpAddr, String> {
-        let rt: tokio::runtime::Runtime = tokio::runtime::Runtime::new().unwrap();
-        let handle = thread::spawn(move || rt.block_on(async { lookup_ips_async(ips).await }));
-        handle.join().unwrap()
+
+    pub fn lookup_ips(&self, ips: Vec<IpAddr>) -> HashMap<IpAddr, String> {
+        self.rt.block_on(async { lookup_ips_async(ips).await })
     }
 }
