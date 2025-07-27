@@ -14,8 +14,6 @@ pub struct AppConfig {
     pub network: NetworkConfig,
     /// Display configuration.
     pub display: DisplayConfig,
-    /// Privacy configuration.
-    pub privacy: PrivacyConfig,
 }
 
 impl AppConfig {
@@ -24,7 +22,6 @@ impl AppConfig {
             logging: LoggingConfig::new(),
             network: NetworkConfig::new(),
             display: DisplayConfig::new(),
-            privacy: PrivacyConfig::new(),
         }
     }
     pub fn load() -> AppConfig {
@@ -171,23 +168,6 @@ impl DisplayConfig {
             connection_count: 20,
             tick_rate: 1000,
             show_bandwidth: false,
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct PrivacyConfig {
-    /// Hide self private IP addresses by default.
-    pub hide_private_ip_info: bool,
-    /// Hide self public IP addresses by default.
-    pub hide_public_ip_info: bool,
-}
-
-impl PrivacyConfig {
-    pub fn new() -> PrivacyConfig {
-        PrivacyConfig {
-            hide_private_ip_info: true,
-            hide_public_ip_info: true,
         }
     }
 }
