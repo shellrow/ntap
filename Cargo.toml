@@ -19,9 +19,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["time", "chrono"] }
-netdev = { version = "0.36", features = ["serde"] }
-nex = { version = "0.22", features = ["serde"] }
-tokio = { version = "1.38" }
+netdev = { version = "0.37", features = ["serde"] }
+nex = { version = "0.23", features = ["serde"] }
+tokio = { version = "1" }
 clap = { version = "4.5", features = ["cargo"] }
 crossterm = "0.27"
 rand = "0.8"
@@ -32,20 +32,19 @@ futures = {version = "0.3"}
 netsock = { version = "0.3", features = ["serde"] }
 #reqwest = { version="0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 chrono = { version = "0.4", features = ["serde"] }
-time = { version = "0.3", features = ["local-offset"] }
 ipnet = { version = "2.11" }
 home = "0.5"
 termtree = "0.5"
 indicatif = { version = "0.18" }
 inquire = "0.6"
-#ndb-oui = { version = "0.2", features = ["bundled"] }
-ndb-tcp-service = { version = "0.2", features = ["bundled"] }
-ndb-udp-service = { version = "0.2", features = ["bundled"] }
-ndb-as = { version = "0.2", features = ["bundled"] }
-ndb-ipv4-asn = { version = "0.2", features = ["bundled"] }
-ndb-ipv6-asn = { version = "0.2", features = ["bundled"] }
-ndb-ipv4-country = { version = "0.2", features = ["bundled"] }
-ndb-ipv6-country = { version = "0.2", features = ["bundled"] }
+#ndb-oui = { version = "0.3", features = ["bundled"] }
+ndb-tcp-service = { version = "0.3", features = ["bundled"] }
+ndb-udp-service = { version = "0.3", features = ["bundled"] }
+ndb-as = { version = "0.3", features = ["bundled"] }
+ndb-ipv4-asn = { version = "0.3", features = ["bundled"] }
+ndb-ipv6-asn = { version = "0.3", features = ["bundled"] }
+ndb-ipv4-country = { version = "0.3", features = ["bundled"] }
+ndb-ipv6-country = { version = "0.3", features = ["bundled"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.50"
