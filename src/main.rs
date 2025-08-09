@@ -29,10 +29,9 @@ fn main() -> Result<()> {
         AppCommands::Interface => handler::interface::show_default_interface(),
         AppCommands::Route => handler::route::show_routes(),
         AppCommands::Socket => handler::socket::show_socket_info(&args),
-        //AppCommands::Update => handler::update::download_db_files(),
         AppCommands::Default => {
-            // If no subcommand is specified, enter stat mode by default
-            handler::stat::show_stat_default(&args)
+            // If no subcommand is specified, enter monitor mode by default
+            handler::monitor::monitor_default(&args)
         }
     }
 }
@@ -41,7 +40,7 @@ fn parse_args() -> ArgMatches {
     let app: Command = Command::new(crate_name!())
         .version(crate_version!())
         .about(crate_description!())
-        .after_help("By default, if no options are specified, ntap enters the stat mode.")
+        .after_help("By default, if no options are specified, ntap enters the monitor mode.")
         .arg(
             Arg::new("interfaces")
                 .help("Specify the interfaces by name. Example: ntap -i eth0,eth1")
@@ -246,10 +245,6 @@ fn parse_args() -> ArgMatches {
         .subcommand(Command::new("route")
             .about("Show IP routing table")
         )
-        // Sub-command for update ntap database
-        //.subcommand(Command::new("update")
-        //    .about("Update ntap database")
-        //)
         ;
     app.get_matches()
 }
