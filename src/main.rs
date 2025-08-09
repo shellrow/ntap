@@ -4,7 +4,6 @@ mod deps;
 mod handler;
 mod log;
 mod net;
-mod notification;
 mod process;
 mod sys;
 mod tui;

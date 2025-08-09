@@ -9,7 +9,6 @@ use crate::net::socket::{
     AddressFamily, LocalSocket, ProtocolPort, SocketConnection, SocketDisplayInfo,
     SocketInfoOption, SocketProcess, TransportProtocol,
 };
-use crate::notification::Notification;
 use crate::process::{ProcessDisplayInfo, ProcessInfo};
 use bytes::Bytes;
 use netdev::{mac::MacAddr, Interface};
@@ -595,7 +594,6 @@ pub struct Overview {
     pub top_processes: Vec<ProcessDisplayInfo>,
     pub top_remote_hosts: Vec<HostDisplayInfo>,
     pub top_app_protocols: Vec<ServiceDisplayInfo>,
-    pub notificatons: Vec<Notification>,
 }
 
 impl Overview {
@@ -605,7 +603,6 @@ impl Overview {
             top_processes: Vec::new(),
             top_remote_hosts: Vec::new(),
             top_app_protocols: Vec::new(),
-            notificatons: Vec::new(),
         }
     }
 }
