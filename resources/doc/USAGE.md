@@ -12,11 +12,11 @@ ntap [OPTIONS] [COMMAND]
 ```
 
 ## Default Behavior
-By default, if no subcommand is specified, ntap enters the `stat` mode, which displays continuous network statistics:
+By default, if no subcommand is specified, ntap enters the `monitor` mode, which displays live network usage statistics:
 ```bash
 ntap
 ```
-This default mode captures packets on all available network interfaces and continuously displays live network statistics, providing a quick and easy way to monitor current network activity without the need for additional configuration.
+This default mode captures packets on all available network interfaces and continuously displays live network usage, providing a quick and easy way to monitor current network activity without the need for additional configuration.
 
 ## Commands
 

@@ -9,7 +9,6 @@ use crate::net::socket::{
     AddressFamily, LocalSocket, ProtocolPort, SocketConnection, SocketDisplayInfo,
     SocketInfoOption, SocketProcess, TransportProtocol,
 };
-use crate::notification::Notification;
 use crate::process::{ProcessDisplayInfo, ProcessInfo};
 use bytes::Bytes;
 use netdev::{mac::MacAddr, Interface};
@@ -595,7 +594,6 @@ pub struct Overview {
     pub top_processes: Vec<ProcessDisplayInfo>,
     pub top_remote_hosts: Vec<HostDisplayInfo>,
     pub top_app_protocols: Vec<ServiceDisplayInfo>,
-    pub notificatons: Vec<Notification>,
 }
 
 impl Overview {
@@ -605,7 +603,6 @@ impl Overview {
             top_processes: Vec::new(),
             top_remote_hosts: Vec::new(),
             top_app_protocols: Vec::new(),
-            notificatons: Vec::new(),
         }
     }
 }
@@ -795,11 +792,11 @@ impl NetStatData {
                     country_code: {
                         if nex::net::ip::is_global_ip(&host.ip_addr) {
                             match host.ip_addr {
-                                IpAddr::V4(ipv4) => match ipv4_country_db.lookup(ipv4) {
+                                IpAddr::V4(ipv4) => match ipv4_country_db.lookup(&ipv4) {
                                     Some(country) => country.to_string(),
                                     None => "N/A".to_string(),
                                 },
-                                IpAddr::V6(ipv6) => match ipv6_country_db.lookup(ipv6) {
+                                IpAddr::V6(ipv6) => match ipv6_country_db.lookup(&ipv6) {
                                     Some(country) => country.to_string(),
                                     None => "N/A".to_string(),
                                 },
@@ -812,11 +809,11 @@ impl NetStatData {
                         if nex::net::ip::is_global_ip(&host.ip_addr) {
                             match host.ip_addr {
                                 IpAddr::V4(ipv4) => ipv4_asn_db
-                                    .lookup(ipv4)
+                                    .lookup(&ipv4)
                                     .and_then(|asn| as_db.get_name(*asn))
                                     .map_or_else(|| String::from("N/A"), |asn| asn.to_string()),
                                 IpAddr::V6(ipv6) => ipv6_asn_db
-                                    .lookup(ipv6)
+                                    .lookup(&ipv6)
                                     .and_then(|asn| as_db.get_name(*asn))
                                     .map_or_else(|| String::from("N/A"), |asn| asn.to_string()),
                             }

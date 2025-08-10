@@ -1,5 +1,4 @@
 use anyhow::Result;
-//use ndb_oui::OuiDb;
 use ndb_as::AsDb;
 use ndb_ipv4_asn::Ipv4AsnDb;
 use ndb_ipv4_country::Ipv4CountryDb;
@@ -9,10 +8,6 @@ use ndb_tcp_service::TcpServiceDb;
 use ndb_udp_service::UdpServiceDb;
 use std::sync::{OnceLock, RwLock};
 
-//pub mod oui;
-//pub mod service;
-
-//pub static OUI_DB: OnceLock<RwLock<OuiDb>> = OnceLock::new();
 pub static TCP_SERVICE_DB: OnceLock<RwLock<TcpServiceDb>> = OnceLock::new();
 pub static UDP_SERVICE_DB: OnceLock<RwLock<UdpServiceDb>> = OnceLock::new();
 pub static AS_DB: OnceLock<RwLock<AsDb>> = OnceLock::new();
@@ -26,7 +21,6 @@ pub fn init_databases() -> Result<()> {
     tracing::info!("Initializing databases...");
     init_tcp_service_db()?;
     init_udp_service_db()?;
-    //init_oui_db()?;
     init_as_db()?;
     init_ipv4_asn_db()?;
     init_ipv6_asn_db()?;
@@ -35,15 +29,6 @@ pub fn init_databases() -> Result<()> {
     tracing::info!("Databases initialized successfully.");
     Ok(())
 }
-
-/* pub fn init_oui_db() -> Result<()> {
-    // Initialize OUI database
-    let oui_db = OuiDb::bundled();
-    OUI_DB
-        .set(RwLock::new(oui_db))
-        .map_err(|_| anyhow::anyhow!("Failed to set OUI_DB in OnceLock"))?;
-    Ok(())
-} */
 
 pub fn init_tcp_service_db() -> Result<()> {
     // Initialize TCP Service database
