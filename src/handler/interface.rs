@@ -1,6 +1,6 @@
 use crate::util::tree::node_label;
 use anyhow::Result;
-use netdev::mac::MacAddr;
+use netdev::MacAddr;
 use netdev::Interface;
 use termtree::Tree;
 

@@ -1,6 +1,6 @@
 [package]
 name = "ntap"
-version = "0.9.0"
+version = "0.9.1"
 edition = "2021"
 authors = ["shellrow <shellrow@foctal.com>"]
 description = "Network traffic monitor/analyzer"
@@ -19,7 +19,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["time", "chrono"] }
-netdev = { version = "0.37", features = ["serde"] }
+netdev = { version = "0.38", features = ["serde"] }
 nex = { version = "0.23", features = ["serde"] }
 tokio = { version = "1" }
 clap = { version = "4.5", features = ["cargo"] }

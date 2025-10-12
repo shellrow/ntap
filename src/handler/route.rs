@@ -3,7 +3,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use anyhow::Result;
 use comfy_table::presets::NOTHING;
 use comfy_table::*;
-use netdev::interface::InterfaceType;
+use netdev::interface::types::InterfaceType;
 
 pub fn show_routes() -> Result<()> {
     let interfaces = netdev::get_interfaces();
