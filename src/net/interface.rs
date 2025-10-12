@@ -1,4 +1,4 @@
-use netdev::mac::MacAddr;
+use netdev::MacAddr;
 use nex::net::interface::Interface;
 use std::{
     collections::{HashMap, HashSet},

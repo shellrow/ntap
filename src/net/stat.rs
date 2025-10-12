@@ -11,7 +11,7 @@ use crate::net::socket::{
 };
 use crate::process::{ProcessDisplayInfo, ProcessInfo};
 use bytes::Bytes;
-use netdev::{mac::MacAddr, Interface};
+use netdev::{MacAddr, Interface};
 use nex::packet::dns::{DnsPacket, DnsType};
 use nex::packet::packet::Packet;
 use serde::{Deserialize, Serialize};
