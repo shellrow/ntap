@@ -1,7 +1,7 @@
 use crate::util::tree::node_label;
 use anyhow::Result;
-use netdev::MacAddr;
 use netdev::Interface;
+use netdev::MacAddr;
 use termtree::Tree;
 
 pub fn show_interfaces() -> Result<()> {

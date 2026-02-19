@@ -1,14 +1,14 @@
 use serde::{Deserialize, Serialize};
 
-use crate::net::traffic::{TrafficDisplayInfo, TrafficInfo};
+use crate::net::traffic::TrafficDisplayInfo;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+/* #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UserInfo {
     pub user_id: String,
     pub group_id: String,
     pub user_name: String,
     pub groups: Vec<String>,
-}
+} */
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProcessInfo {
@@ -25,11 +25,11 @@ impl ProcessInfo {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+/* #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProcessTrafficInfo {
     pub process: ProcessInfo,
     pub traffic: TrafficInfo,
-}
+} */
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProcessDisplayInfo {
