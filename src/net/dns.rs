@@ -158,6 +158,7 @@ pub fn start_dns_map_update(netstat_strage: &mut Arc<NetStatStrage>) {
             Ok(remote_hosts) => remote_hosts,
             Err(e) => {
                 tracing::error!("[dns_map_update] lock error: {}", e);
+                std::thread::sleep(std::time::Duration::from_millis(25));
                 continue;
             }
         };
@@ -165,6 +166,7 @@ pub fn start_dns_map_update(netstat_strage: &mut Arc<NetStatStrage>) {
             Ok(reverse_dns_map) => reverse_dns_map,
             Err(e) => {
                 tracing::error!("[dns_map_update] lock error: {}", e);
+                std::thread::sleep(std::time::Duration::from_millis(25));
                 continue;
             }
         };
@@ -184,6 +186,7 @@ pub fn start_dns_map_update(netstat_strage: &mut Arc<NetStatStrage>) {
             Ok(remote_hosts) => remote_hosts,
             Err(e) => {
                 tracing::error!("[dns_map_update] lock error: {}", e);
+                std::thread::sleep(std::time::Duration::from_millis(25));
                 continue;
             }
         };
@@ -191,6 +194,7 @@ pub fn start_dns_map_update(netstat_strage: &mut Arc<NetStatStrage>) {
             Ok(reverse_dns_map) => reverse_dns_map,
             Err(e) => {
                 tracing::error!("[dns_map_update] lock error: {}", e);
+                std::thread::sleep(std::time::Duration::from_millis(25));
                 continue;
             }
         };

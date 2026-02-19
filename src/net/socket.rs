@@ -390,6 +390,7 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
             Ok(connections) => connections,
             Err(e) => {
                 tracing::error!("[socket_info_update] lock error: {}", e);
+                std::thread::sleep(std::time::Duration::from_millis(25));
                 continue;
             }
         };
