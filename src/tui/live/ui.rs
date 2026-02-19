@@ -77,6 +77,24 @@ fn packet_info(packet: &crate::net::packet::PacketFrame) -> String {
     String::new()
 }
 
+fn payload_hex_preview(payload: &[u8], max_len: usize) -> String {
+    if payload.is_empty() {
+        return String::from("-");
+    }
+    let take_len = payload.len().min(max_len);
+    let mut out = String::new();
+    for (idx, b) in payload.iter().take(take_len).enumerate() {
+        if idx > 0 {
+            out.push(' ');
+        }
+        out.push_str(&format!("{b:02x}"));
+    }
+    if payload.len() > max_len {
+        out.push_str(" ...");
+    }
+    out
+}
+
 fn selected_packet<'a>(app: &'a App) -> Option<&'a crate::net::packet::PacketFrame> {
     app.talbe_state
         .selected()
@@ -162,6 +180,51 @@ fn draw_packet_detail(f: &mut Frame, app: &App, area: Rect) {
             packet_info(packet)
         )));
 
+        if let Some(ip) = &packet.ip {
+            if let Some(ipv4) = &ip.ipv4 {
+                lines.push(Line::raw(format!(
+                    "IPv4: {} -> {} ttl={} id={} proto={}",
+                    ipv4.source,
+                    ipv4.destination,
+                    ipv4.ttl,
+                    ipv4.identification,
+                    ipv4.next_level_protocol.as_str()
+                )));
+            }
+            if let Some(ipv6) = &ip.ipv6 {
+                lines.push(Line::raw(format!(
+                    "IPv6: {} -> {} hop_limit={} next={}",
+                    ipv6.source,
+                    ipv6.destination,
+                    ipv6.hop_limit,
+                    ipv6.next_header.as_str()
+                )));
+            }
+        }
+
+        if let Some(transport) = &packet.transport {
+            if let Some(tcp) = &transport.tcp {
+                lines.push(Line::raw(format!(
+                    "TCP: {} -> {} flags=0x{:02x} seq={} ack={} win={}",
+                    tcp.source,
+                    tcp.destination,
+                    tcp.flags,
+                    tcp.sequence,
+                    tcp.acknowledgement,
+                    tcp.window
+                )));
+            }
+            if let Some(udp) = &transport.udp {
+                lines.push(Line::raw(format!(
+                    "UDP: {} -> {} len={} checksum=0x{:04x}",
+                    udp.source,
+                    udp.destination,
+                    udp.length,
+                    udp.checksum
+                )));
+            }
+        }
+
         if let Some(datalink) = &packet.datalink {
             if let Some(eth) = &datalink.ethernet {
                 lines.push(Line::raw(format!(
@@ -178,6 +241,12 @@ fn draw_packet_detail(f: &mut Frame, app: &App, area: Rect) {
                 )));
             }
         }
+
+        lines.push(Line::raw(format!(
+            "Payload({}B): {}",
+            packet.payload.len(),
+            payload_hex_preview(packet.payload.as_ref(), 48)
+        )));
     } else {
         lines.push(Line::raw("No packets captured yet."));
     }
