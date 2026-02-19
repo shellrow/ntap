@@ -8,8 +8,8 @@ pub fn draw(f: &mut Frame, app: &mut App) {
             Constraint::Min(0),
             Constraint::Length(1),
         ])
-        .split(f.size());
-    let titles = app
+        .split(f.area());
+    let titles: Vec<Line<'_>> = app
         .tabs
         .titles
         .iter()
@@ -108,7 +108,7 @@ fn draw_packet_table(f: &mut Frame, app: &mut App, area: Rect) {
             .style(Style::new().bold()), //.bottom_margin(1),
         )
         .block(Block::default().borders(Borders::ALL).title(table_title))
-        .highlight_style(Style::new().reversed())
+        .row_highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
 
     //f.render_widget(table, area);

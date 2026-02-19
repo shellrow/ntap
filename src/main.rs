@@ -54,6 +54,7 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     Monitor(MonitorArgs),
+    Live(LiveArgs),
     Interfaces,
     Interface,
     Route,
@@ -86,6 +87,35 @@ struct MonitorArgs {
     ports: Vec<u16>,
 }
 
+#[derive(Debug, Parser, Default)]
+struct LiveArgs {
+    #[arg(
+        short = 'i',
+        long = "interfaces",
+        value_delimiter = ',',
+        value_name = "interfaces"
+    )]
+    interfaces: Vec<String>,
+    #[arg(
+        short = 'P',
+        long = "protocols",
+        value_delimiter = ',',
+        value_name = "protocols"
+    )]
+    protocols: Vec<String>,
+    #[arg(short = 'a', long = "ips", value_delimiter = ',', value_name = "ips")]
+    ips: Vec<IpAddr>,
+    #[arg(
+        short = 'p',
+        long = "ports",
+        value_delimiter = ',',
+        value_name = "ports"
+    )]
+    ports: Vec<u16>,
+    #[arg(short = 'l', long = "limit", value_name = "count")]
+    limit: Option<usize>,
+}
+
 fn to_monitor_options(cli: &Cli, cmd: Option<&MonitorArgs>) -> handler::monitor::MonitorOptions {
     let interfaces = cmd
         .map(|c| c.interfaces.clone())
@@ -109,6 +139,31 @@ fn to_monitor_options(cli: &Cli, cmd: Option<&MonitorArgs>) -> handler::monitor:
     }
 }
 
+fn to_live_options(cli: &Cli, cmd: Option<&LiveArgs>) -> handler::live::LiveOptions {
+    let interfaces = cmd
+        .map(|c| c.interfaces.clone())
+        .unwrap_or_else(|| cli.interfaces.clone());
+    let protocols = cmd
+        .map(|c| c.protocols.clone())
+        .unwrap_or_else(|| cli.protocols.clone());
+    let ips = cmd
+        .map(|c| c.ips.clone())
+        .unwrap_or_else(|| cli.ips.clone());
+    let ports = cmd
+        .map(|c| c.ports.clone())
+        .unwrap_or_else(|| cli.ports.clone());
+    let limit = cmd.and_then(|c| c.limit);
+    handler::live::LiveOptions {
+        interfaces,
+        protocols,
+        ips,
+        ports,
+        tickrate: cli.tickrate,
+        enhanced_graphics: cli.enhanced_graphics,
+        limit,
+    }
+}
+
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -116,6 +171,7 @@ async fn main() -> Result<()> {
         Some(Command::Monitor(args)) => {
             handler::monitor::monitor(to_monitor_options(&cli, Some(args))).await
         }
+        Some(Command::Live(args)) => handler::live::live_capture(to_live_options(&cli, Some(args))).await,
         Some(Command::Interfaces) => handler::interface::show_interfaces(),
         Some(Command::Interface) => handler::interface::show_default_interface(),
         Some(Command::Route) => handler::route::show_routes(),
