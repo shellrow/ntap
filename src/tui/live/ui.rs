@@ -1,4 +1,7 @@
 use super::app::App;
+use nex::packet::dns::DnsPacket;
+use nex::packet::packet::Packet;
+use nex::packet::tcp::TcpFlags;
 use ratatui::{prelude::*, widgets::*};
 
 pub fn draw(f: &mut Frame, app: &mut App) {
@@ -49,13 +52,75 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 }
 
 fn packet_info(packet: &crate::net::packet::PacketFrame) -> String {
+    let app_hint = packet_app_hint(packet);
     if let Some(transport) = &packet.transport {
         if let Some(tcp) = &transport.tcp {
             let flags = tcp.flags;
-            return format!("TCP flags=0x{flags:02x} seq={} ack={}", tcp.sequence, tcp.acknowledgement);
+            let has = |bit: u8| flags & bit == bit;
+            let mut flag_text = String::new();
+            if has(TcpFlags::SYN) {
+                flag_text.push('S');
+            }
+            if has(TcpFlags::FIN) {
+                flag_text.push('F');
+            }
+            if has(TcpFlags::PSH) {
+                flag_text.push('P');
+            }
+            if has(TcpFlags::RST) {
+                flag_text.push('R');
+            }
+            if has(TcpFlags::URG) {
+                flag_text.push('U');
+            }
+            if has(TcpFlags::ECE) {
+                flag_text.push('E');
+            }
+            if has(TcpFlags::CWR) {
+                flag_text.push('W');
+            }
+            if has(TcpFlags::ACK) {
+                flag_text.push('.');
+            }
+            if flag_text.is_empty() {
+                flag_text.push('.');
+            }
+
+            let payload_len = packet.payload.len() as u32;
+            let seq_end = tcp.sequence.saturating_add(payload_len);
+            if payload_len > 0 {
+                let base = format!(
+                    "Flags [{}], seq {}:{}, ack {}, win {}, length {}",
+                    flag_text, tcp.sequence, seq_end, tcp.acknowledgement, tcp.window, payload_len
+                );
+                return if app_hint.is_empty() {
+                    base
+                } else {
+                    format!("{base} | {app_hint}")
+                };
+            }
+            let base = format!(
+                "Flags [{}], seq {}, ack {}, win {}, length 0",
+                flag_text, tcp.sequence, tcp.acknowledgement, tcp.window
+            );
+            return if app_hint.is_empty() {
+                base
+            } else {
+                format!("{base} | {app_hint}")
+            };
         }
         if let Some(udp) = &transport.udp {
-            return format!("UDP {} -> {}", udp.source, udp.destination);
+            let base = format!(
+                "{} > {}: UDP, length {}",
+                udp.source,
+                udp.destination,
+                packet.payload.len()
+            );
+            return if app_hint.is_empty() {
+                base
+            } else {
+                format!("{base} | {app_hint}")
+            };
         }
     }
     if let Some(ip) = &packet.ip {
@@ -72,6 +137,93 @@ fn packet_info(packet: &crate::net::packet::PacketFrame) -> String {
     if let Some(datalink) = &packet.datalink {
         if datalink.arp.is_some() {
             return "ARP".to_string();
+        }
+    }
+    String::new()
+}
+
+fn is_tls_client_hello(payload: &[u8]) -> bool {
+    // TLS record: handshake(0x16), then client_hello(0x01)
+    payload.len() > 5 && payload[0] == 0x16 && payload[5] == 0x01
+}
+
+fn first_http_line(payload: &[u8]) -> Option<String> {
+    let s = std::str::from_utf8(payload).ok()?;
+    let first = s.lines().next()?.trim();
+    if first.starts_with("GET ")
+        || first.starts_with("POST ")
+        || first.starts_with("PUT ")
+        || first.starts_with("DELETE ")
+        || first.starts_with("HEAD ")
+        || first.starts_with("PATCH ")
+        || first.starts_with("OPTIONS ")
+        || first.starts_with("HTTP/")
+    {
+        Some(first.to_string())
+    } else {
+        None
+    }
+}
+
+fn http_host(payload: &[u8]) -> Option<String> {
+    let s = std::str::from_utf8(payload).ok()?;
+    for line in s.lines() {
+        if let Some(rest) = line.strip_prefix("Host:") {
+            return Some(rest.trim().to_string());
+        }
+    }
+    None
+}
+
+fn dns_hint(payload: bytes::Bytes) -> Option<String> {
+    let dns = DnsPacket::from_buf(&payload)?;
+    if let Some(query) = dns.queries.first() {
+        if let Ok(name) = query.get_qname_parsed() {
+            return Some(format!("DNS query {}", name));
+        }
+    }
+    if !dns.responses.is_empty() {
+        return Some(format!("DNS response {} record(s)", dns.responses.len()));
+    }
+    Some("DNS".to_string())
+}
+
+fn packet_app_hint(packet: &crate::net::packet::PacketFrame) -> String {
+    if let Some(transport) = &packet.transport {
+        if let Some(udp) = &transport.udp {
+            if udp.source == 53 || udp.destination == 53 {
+                if let Some(hint) = dns_hint(packet.payload.clone()) {
+                    return hint;
+                }
+            }
+        }
+        if let Some(tcp) = &transport.tcp {
+            let payload = packet.payload.as_ref();
+            if payload.is_empty() {
+                return String::new();
+            }
+            if tcp.source == 53 || tcp.destination == 53 {
+                if let Some(hint) = dns_hint(packet.payload.clone()) {
+                    return hint;
+                }
+            }
+            if tcp.source == 443 || tcp.destination == 443 {
+                if is_tls_client_hello(payload) {
+                    return "TLS ClientHello".to_string();
+                }
+            }
+            if tcp.source == 80
+                || tcp.destination == 80
+                || tcp.source == 8080
+                || tcp.destination == 8080
+            {
+                if let Some(line) = first_http_line(payload) {
+                    if let Some(host) = http_host(payload) {
+                        return format!("HTTP {} host={}", line, host);
+                    }
+                    return format!("HTTP {}", line);
+                }
+            }
         }
     }
     String::new()
