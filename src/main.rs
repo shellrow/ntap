@@ -170,7 +170,9 @@ async fn main() -> Result<()> {
         Some(Command::Monitor(args)) => {
             handler::monitor::monitor(to_monitor_options(&cli, Some(args))).await
         }
-        Some(Command::Live(args)) => handler::live::live_capture(to_live_options(&cli, Some(args))).await,
+        Some(Command::Live(args)) => {
+            handler::live::live_capture(to_live_options(&cli, Some(args))).await
+        }
         Some(Command::Interfaces) => handler::interface::show_interfaces(),
         Some(Command::Interface) => handler::interface::show_default_interface(),
         None => handler::monitor::monitor(to_monitor_options(&cli, None)).await,

@@ -22,8 +22,10 @@ fn create_resolver(timeout: Option<Duration>) -> Option<Resolver<TokioConnection
     }
     #[cfg(not(any(unix, target_os = "windows")))]
     {
-        let mut builder =
-            Resolver::builder_with_config(ResolverConfig::default(), TokioConnectionProvider::default());
+        let mut builder = Resolver::builder_with_config(
+            ResolverConfig::default(),
+            TokioConnectionProvider::default(),
+        );
         if let Some(timeout) = timeout {
             builder.options_mut().timeout = timeout;
         }

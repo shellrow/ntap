@@ -18,32 +18,23 @@ pub fn get_interface_by_ip(ip_addr: IpAddr) -> Option<Interface> {
             }
         }
     }
-    return None;
+    None
 }
 
 pub fn get_interface_by_index(index: u32) -> Option<Interface> {
-    for iface in nex::net::interface::get_interfaces() {
-        if iface.index == index {
-            return Some(iface);
-        }
-    }
-    return None;
+    nex::net::interface::get_interfaces()
+        .into_iter()
+        .find(|iface| iface.index == index)
 }
 
 pub fn get_interface_by_name(name: String) -> Option<Interface> {
-    for iface in nex::net::interface::get_interfaces() {
-        if iface.name == name {
-            return Some(iface);
-        }
-    }
-    return None;
+    nex::net::interface::get_interfaces()
+        .into_iter()
+        .find(|iface| iface.name == name)
 }
 
 pub fn get_interface_ipv4(iface: &Interface) -> Option<IpAddr> {
-    for ip in iface.ipv4.clone() {
-        return Some(IpAddr::V4(ip.addr()));
-    }
-    return None;
+    iface.ipv4.first().map(|ip| IpAddr::V4(ip.addr()))
 }
 
 pub fn get_interface_global_ipv6(iface: &Interface) -> Option<IpAddr> {
@@ -52,7 +43,7 @@ pub fn get_interface_global_ipv6(iface: &Interface) -> Option<IpAddr> {
             return Some(IpAddr::V6(ip.addr()));
         }
     }
-    return None;
+    None
 }
 
 pub fn get_interface_local_ipv6(iface: &Interface) -> Option<IpAddr> {
@@ -61,7 +52,7 @@ pub fn get_interface_local_ipv6(iface: &Interface) -> Option<IpAddr> {
             return Some(IpAddr::V6(ip.addr()));
         }
     }
-    return None;
+    None
 }
 
 pub fn get_interface_ips(iface: &Interface) -> Vec<String> {
@@ -137,14 +128,14 @@ pub fn get_local_ip_map() -> HashMap<IpAddr, String> {
 pub fn get_usable_interfaces() -> Vec<Interface> {
     let mut usable_interfaces: Vec<Interface> = Vec::new();
     for iface in nex::net::interface::get_interfaces() {
-        if iface.is_up() && (iface.ipv4.len() > 0 || iface.ipv6.len() > 0) {
+        if iface.is_up() && (!iface.ipv4.is_empty() || !iface.ipv6.is_empty()) {
             usable_interfaces.push(iface);
         }
     }
     usable_interfaces
 }
 
-pub fn get_interfaces_by_name(names: &Vec<String>) -> Vec<Interface> {
+pub fn get_interfaces_by_name(names: &[String]) -> Vec<Interface> {
     let mut interfaces: Vec<Interface> = Vec::new();
     for iface in nex::net::interface::get_interfaces() {
         if names.contains(&iface.name) {
@@ -156,14 +147,14 @@ pub fn get_interfaces_by_name(names: &Vec<String>) -> Vec<Interface> {
 
 pub fn get_interface_macaddr(iface: &Interface) -> MacAddr {
     match &iface.mac_addr {
-        Some(mac_addr) => mac_addr.clone(),
+        Some(mac_addr) => *mac_addr,
         None => MacAddr::zero(),
     }
 }
 
 pub fn get_gateway_macaddr(iface: &Interface) -> MacAddr {
     match &iface.gateway {
-        Some(gateway) => gateway.mac_addr.clone(),
+        Some(gateway) => gateway.mac_addr,
         None => MacAddr::zero(),
     }
 }

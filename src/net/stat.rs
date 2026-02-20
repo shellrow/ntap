@@ -500,10 +500,10 @@ impl NetStatStrage {
             if let Some(_tcp) = transport.tcp {
                 let socket_connection: SocketConnection = SocketConnection {
                     interface_name: interface_name.clone(),
-                    local_ip_addr: local_ip_addr,
-                    local_port: local_port,
-                    remote_ip_addr: remote_ip_addr,
-                    remote_port: remote_port,
+                    local_ip_addr,
+                    local_port,
+                    remote_ip_addr,
+                    remote_port,
                     protocol: TransportProtocol::TCP,
                 };
                 let socket_traffic: &mut TrafficInfo = connections_inner
@@ -522,11 +522,11 @@ impl NetStatStrage {
             }
             if let Some(_udp) = transport.udp {
                 let socket_connection: SocketConnection = SocketConnection {
-                    interface_name: interface_name,
-                    local_ip_addr: local_ip_addr,
-                    local_port: local_port,
-                    remote_ip_addr: remote_ip_addr,
-                    remote_port: remote_port,
+                    interface_name,
+                    local_ip_addr,
+                    local_port,
+                    remote_ip_addr,
+                    remote_port,
                     protocol: TransportProtocol::UDP,
                 };
                 let socket_traffic: &mut TrafficInfo = connections_inner
@@ -627,7 +627,7 @@ impl NetStatData {
             }
         };
         NetStatData {
-            default_interface: default_interface,
+            default_interface,
             traffic: TrafficInfo::new(),
             remote_hosts: HashMap::new(),
             connection_map: HashMap::new(),
@@ -758,7 +758,7 @@ impl NetStatData {
         self.remote_hosts.iter().for_each(|(_ip, host)| {
             match host_traffic_map.get(&host.ip_addr) {
                 Some(traffic) => {
-                    let mut traffic = traffic.clone();
+                    let mut traffic = *traffic;
                     traffic += host.traffic_info.bytes_sent;
                     traffic += host.traffic_info.bytes_received;
                     host_traffic_map.insert(host.ip_addr, traffic);
@@ -802,23 +802,20 @@ impl NetStatData {
                 port: conn.local_port,
                 protocol: conn.protocol,
             };
-            match self.local_socket_map.get(&local_socket) {
-                Some(socket_process) => {
-                    if let Some(process) = &socket_process.process {
-                        match process_traffic_map.get(&process.pid) {
-                            Some(traffic) => {
-                                let mut traffic = traffic.clone();
-                                traffic.add_traffic(traffic_info);
-                                process_traffic_map.insert(process.pid, traffic);
-                            }
-                            None => {
-                                process_traffic_map.insert(process.pid, traffic_info.clone());
-                            }
+            if let Some(socket_process) = self.local_socket_map.get(&local_socket) {
+                if let Some(process) = &socket_process.process {
+                    match process_traffic_map.get(&process.pid) {
+                        Some(traffic) => {
+                            let mut traffic = traffic.clone();
+                            traffic.add_traffic(traffic_info);
+                            process_traffic_map.insert(process.pid, traffic);
                         }
-                        process_map.insert(process.pid, process.clone());
+                        None => {
+                            process_traffic_map.insert(process.pid, traffic_info.clone());
+                        }
                     }
+                    process_map.insert(process.pid, process.clone());
                 }
-                None => {}
             }
         });
         // Create process total traffic map from process_traffic_map
@@ -888,7 +885,7 @@ impl NetStatData {
                         IpAddr::V6(_) => AddressFamily::IPv6,
                     },
                     traffic: traffic.to_display_info(),
-                    process: process,
+                    process,
                 };
                 top_connections.push(socket_traffic_info);
             }
@@ -937,7 +934,7 @@ impl NetStatData {
                         IpAddr::V6(_) => AddressFamily::IPv6,
                     },
                     traffic: traffic.to_display_info(),
-                    process: process,
+                    process,
                 };
                 if opt.address_family.contains(&socket_traffic_info.ip_version)
                     && opt

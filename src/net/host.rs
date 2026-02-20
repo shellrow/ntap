@@ -13,9 +13,9 @@ pub struct RemoteHostInfo {
 impl RemoteHostInfo {
     pub fn new(mac_addr: String, ip_addr: IpAddr, hostname: String) -> Self {
         RemoteHostInfo {
-            mac_addr: mac_addr,
-            ip_addr: ip_addr,
-            hostname: hostname,
+            mac_addr,
+            ip_addr,
+            hostname,
             traffic_info: TrafficInfo::new(),
         }
     }

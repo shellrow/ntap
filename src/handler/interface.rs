@@ -52,7 +52,7 @@ pub fn show_interfaces() -> Result<()> {
             iface_tree.push(gateway_tree);
         }
 
-        if iface.dns_servers.len() > 0 {
+        if !iface.dns_servers.is_empty() {
             let mut dns_tree = Tree::new(node_label("DNS Servers", None, None));
             for server_addr in &iface.dns_servers {
                 dns_tree.push(node_label(&server_addr.to_string(), None, None));
@@ -114,7 +114,7 @@ pub fn show_default_interface() -> Result<()> {
         gateway_tree.push(ipv6_tree);
         tree.push(gateway_tree);
     }
-    if iface.dns_servers.len() > 0 {
+    if !iface.dns_servers.is_empty() {
         let mut dns_tree = Tree::new(node_label("DNS Servers", None, None));
         for server_addr in &iface.dns_servers {
             dns_tree.push(node_label(&server_addr.to_string(), None, None));

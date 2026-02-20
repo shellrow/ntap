@@ -43,7 +43,8 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
         if let Some(ethertype) = crate::net::packet::get_ethertype_from_str(protocol) {
             ethertypes.insert(ethertype);
         }
-        if let Some(ip_next_protocol) = crate::net::packet::get_ip_next_protocol_from_str(protocol) {
+        if let Some(ip_next_protocol) = crate::net::packet::get_ip_next_protocol_from_str(protocol)
+        {
             ip_next_protocols.insert(ip_next_protocol);
         }
     }
@@ -61,7 +62,8 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
     }
 
     let storage_capacity = opts.limit.unwrap_or(u8::MAX as usize);
-    let packet_strage: Arc<PacketStorage> = Arc::new(PacketStorage::with_capacity(storage_capacity));
+    let packet_strage: Arc<PacketStorage> =
+        Arc::new(PacketStorage::with_capacity(storage_capacity));
     let packet_strage_ui: Arc<PacketStorage> = Arc::clone(&packet_strage);
     let target_interfaces = if config.network.interfaces.is_empty() {
         crate::net::interface::get_usable_interfaces()

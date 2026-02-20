@@ -18,10 +18,7 @@ pub struct ProcessInfo {
 
 impl ProcessInfo {
     pub fn new(pid: u32, name: String) -> ProcessInfo {
-        ProcessInfo {
-            pid: pid,
-            name: name,
-        }
+        ProcessInfo { pid, name }
     }
 }
 

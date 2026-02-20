@@ -113,7 +113,8 @@ impl PacketCaptureOptions {
     }
     pub fn from_interface_name(if_name: String) -> PacketCaptureOptions {
         let iface = interface::get_interface_by_name(if_name).unwrap();
-        let options = PacketCaptureOptions {
+
+        PacketCaptureOptions {
             interface_index: iface.index,
             interface_name: iface.name.clone(),
             src_ips: HashSet::new(),
@@ -128,11 +129,10 @@ impl PacketCaptureOptions {
             receive_undefined: true,
             tunnel: iface.is_tun(),
             loopback: iface.is_loopback(),
-        };
-        options
+        }
     }
     pub fn from_interface(iface: &Interface) -> PacketCaptureOptions {
-        let options = PacketCaptureOptions {
+        PacketCaptureOptions {
             interface_index: iface.index,
             interface_name: iface.name.clone(),
             src_ips: HashSet::new(),
@@ -147,8 +147,7 @@ impl PacketCaptureOptions {
             receive_undefined: true,
             tunnel: iface.is_tun(),
             loopback: iface.is_loopback(),
-        };
-        options
+        }
     }
     pub fn add_ethertype_filter(&mut self, ethertype_name: &str) {
         // Currently, EtherType not support from_str, so we need to match it manually
@@ -240,53 +239,38 @@ pub fn start_capture(
     let start_time = Instant::now();
     report.start_time = sys::get_sysdate();
     loop {
-        match rx.next() {
-            Ok(packet) => {
-                let mut parse_option: ParseOption = ParseOption::default();
-                if interface.is_tun()
-                    || (cfg!(any(target_os = "macos", target_os = "ios"))
-                        && interface.is_loopback())
-                {
-                    let payload_offset;
-                    if interface.is_loopback() {
-                        payload_offset = 14;
-                    } else {
-                        payload_offset = 0;
-                    }
-                    parse_option.from_ip_packet = true;
-                    parse_option.offset = payload_offset;
-                }
-                report.bytes = report.bytes.saturating_add(packet.len());
-                report.packets = report.packets.saturating_add(1);
-                let frame: Frame = match Frame::from_buf(&packet, parse_option) {
-                    Some(frame) => frame,
-                    None => {
-                        tracing::error!("Failed to parse packet");
-                        continue;
-                    }
-                };
-                if filter_packet(&frame, &capture_options) {
-                    let packet_frame = PacketFrame::from_nex_frame(
-                        report.packets,
-                        interface.index,
-                        interface.name.clone(),
-                        frame,
-                    );
-                    match msg_tx.send(packet_frame) {
-                        Ok(_) => {}
-                        Err(_) => {}
-                    }
-                }
+        if let Ok(packet) = rx.next() {
+            let mut parse_option: ParseOption = ParseOption::default();
+            if interface.is_tun()
+                || (cfg!(any(target_os = "macos", target_os = "ios")) && interface.is_loopback())
+            {
+                let payload_offset = if interface.is_loopback() { 14 } else { 0 };
+                parse_option.from_ip_packet = true;
+                parse_option.offset = payload_offset;
             }
-            Err(_) => {}
+            report.bytes = report.bytes.saturating_add(packet.len());
+            report.packets = report.packets.saturating_add(1);
+            let frame: Frame = match Frame::from_buf(packet, parse_option) {
+                Some(frame) => frame,
+                None => {
+                    tracing::error!("Failed to parse packet");
+                    continue;
+                }
+            };
+            if filter_packet(&frame, &capture_options) {
+                let packet_frame = PacketFrame::from_nex_frame(
+                    report.packets,
+                    interface.index,
+                    interface.name.clone(),
+                    frame,
+                );
+                if msg_tx.send(packet_frame).is_ok() {}
+            }
         }
-        match stop.lock() {
-            Ok(stop) => {
-                if *stop {
-                    break;
-                }
+        if let Ok(stop) = stop.lock() {
+            if *stop {
+                break;
             }
-            Err(_) => {}
         }
         if Instant::now().duration_since(start_time) > capture_options.capture_timeout {
             break;
@@ -325,43 +309,27 @@ pub fn start_live_capture(
     };
     let start_time = Instant::now();
     loop {
-        match rx.next() {
-            Ok(packet) => {
-                let mut parse_option: ParseOption = ParseOption::default();
-                if interface.is_tun()
-                    || (cfg!(any(target_os = "macos", target_os = "ios"))
-                        && interface.is_loopback())
-                {
-                    let payload_offset;
-                    if interface.is_loopback() {
-                        payload_offset = 14;
-                    } else {
-                        payload_offset = 0;
-                    }
-                    parse_option.from_ip_packet = true;
-                    parse_option.offset = payload_offset;
-                }
-                let frame: Frame = match Frame::from_buf(&packet, parse_option) {
-                    Some(frame) => frame,
-                    None => {
-                        tracing::error!("Failed to parse packet");
-                        continue;
-                    }
-                };
-                if filter_packet(&frame, &capture_options) {
-                    let packet_frame = PacketFrame::from_nex_frame(
-                        0,
-                        interface.index,
-                        interface.name.clone(),
-                        frame,
-                    );
-                    match msg_tx.send(packet_frame) {
-                        Ok(_) => {}
-                        Err(_) => {}
-                    }
-                }
+        if let Ok(packet) = rx.next() {
+            let mut parse_option: ParseOption = ParseOption::default();
+            if interface.is_tun()
+                || (cfg!(any(target_os = "macos", target_os = "ios")) && interface.is_loopback())
+            {
+                let payload_offset = if interface.is_loopback() { 14 } else { 0 };
+                parse_option.from_ip_packet = true;
+                parse_option.offset = payload_offset;
             }
-            Err(_) => {}
+            let frame: Frame = match Frame::from_buf(packet, parse_option) {
+                Some(frame) => frame,
+                None => {
+                    tracing::error!("Failed to parse packet");
+                    continue;
+                }
+            };
+            if filter_packet(&frame, &capture_options) {
+                let packet_frame =
+                    PacketFrame::from_nex_frame(0, interface.index, interface.name.clone(), frame);
+                if msg_tx.send(packet_frame).is_ok() {}
+            }
         }
         if Instant::now().duration_since(start_time) > capture_options.capture_timeout {
             break;
@@ -397,40 +365,27 @@ pub fn start_background_capture(
     };
     let start_time = Instant::now();
     loop {
-        match rx.next() {
-            Ok(packet) => {
-                let mut parse_option: ParseOption = ParseOption::default();
-                if interface.is_tun()
-                    || (cfg!(any(target_os = "macos", target_os = "ios"))
-                        && interface.is_loopback())
-                {
-                    let payload_offset;
-                    if interface.is_loopback() {
-                        payload_offset = 14;
-                    } else {
-                        payload_offset = 0;
-                    }
-                    parse_option.from_ip_packet = true;
-                    parse_option.offset = payload_offset;
-                }
-                let frame: Frame = match Frame::from_buf(&packet, parse_option) {
-                    Some(frame) => frame,
-                    None => {
-                        tracing::error!("Failed to parse packet");
-                        continue;
-                    }
-                };
-                if filter_packet(&frame, &capture_options) {
-                    let packet_frame = PacketFrame::from_nex_frame(
-                        0,
-                        interface.index,
-                        interface.name.clone(),
-                        frame,
-                    );
-                    netstat_strage.update(packet_frame);
-                }
+        if let Ok(packet) = rx.next() {
+            let mut parse_option: ParseOption = ParseOption::default();
+            if interface.is_tun()
+                || (cfg!(any(target_os = "macos", target_os = "ios")) && interface.is_loopback())
+            {
+                let payload_offset = if interface.is_loopback() { 14 } else { 0 };
+                parse_option.from_ip_packet = true;
+                parse_option.offset = payload_offset;
             }
-            Err(_) => {}
+            let frame: Frame = match Frame::from_buf(packet, parse_option) {
+                Some(frame) => frame,
+                None => {
+                    tracing::error!("Failed to parse packet");
+                    continue;
+                }
+            };
+            if filter_packet(&frame, &capture_options) {
+                let packet_frame =
+                    PacketFrame::from_nex_frame(0, interface.index, interface.name.clone(), frame);
+                netstat_strage.update(packet_frame);
+            }
         }
         if Instant::now().duration_since(start_time) > capture_options.capture_timeout {
             break;
@@ -497,41 +452,23 @@ fn filter_packet(frame: &Frame, capture_options: &PacketCaptureOptions) -> bool 
 }
 
 fn filter_host(src_ip: IpAddr, dst_ip: IpAddr, capture_options: &PacketCaptureOptions) -> bool {
-    if capture_options.src_ips.len() == 0 && capture_options.dst_ips.len() == 0 {
+    if capture_options.src_ips.is_empty() && capture_options.dst_ips.is_empty() {
         return true;
     }
-    if capture_options.src_ips.contains(&src_ip) || capture_options.dst_ips.contains(&dst_ip) {
-        return true;
-    } else {
-        return false;
-    }
+    capture_options.src_ips.contains(&src_ip) || capture_options.dst_ips.contains(&dst_ip)
 }
 
 fn filter_port(src_port: u16, dst_port: u16, capture_options: &PacketCaptureOptions) -> bool {
-    if capture_options.src_ports.len() == 0 && capture_options.dst_ports.len() == 0 {
+    if capture_options.src_ports.is_empty() && capture_options.dst_ports.is_empty() {
         return true;
     }
-    if capture_options.src_ports.contains(&src_port)
-        || capture_options.dst_ports.contains(&dst_port)
-    {
-        return true;
-    } else {
-        return false;
-    }
+    capture_options.src_ports.contains(&src_port) || capture_options.dst_ports.contains(&dst_port)
 }
 
 fn filter_ether_type(ether_type: EtherType, capture_options: &PacketCaptureOptions) -> bool {
-    if capture_options.ether_types.len() == 0 || capture_options.ether_types.contains(&ether_type) {
-        return true;
-    } else {
-        return false;
-    }
+    capture_options.ether_types.is_empty() || capture_options.ether_types.contains(&ether_type)
 }
 
 fn filter_ip_protocol(protocol: IpNextProtocol, capture_options: &PacketCaptureOptions) -> bool {
-    if capture_options.ip_protocols.len() == 0 || capture_options.ip_protocols.contains(&protocol) {
-        return true;
-    } else {
-        return false;
-    }
+    capture_options.ip_protocols.is_empty() || capture_options.ip_protocols.contains(&protocol)
 }

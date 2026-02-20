@@ -52,9 +52,9 @@ impl PacketFrame {
         frame: nex::packet::frame::Frame,
     ) -> PacketFrame {
         PacketFrame {
-            capture_no: capture_no,
-            if_index: if_index,
-            if_name: if_name,
+            capture_no,
+            if_index,
+            if_name,
             datalink: frame.datalink,
             ip: frame.ip,
             transport: frame.transport,
@@ -72,14 +72,11 @@ impl PacketFrame {
         };
         // Remove UTC offset that start from + or -
         let datetime_vec = timestamp.split('+').collect::<Vec<&str>>();
-        let timestamp: String = if datetime_vec.len() > 1 {
-            datetime_vec[0].to_string()
-        } else if datetime_vec.len() > 1 {
+        if datetime_vec.len() > 1 {
             datetime_vec[0].to_string()
         } else {
             timestamp
-        };
-        timestamp
+        }
     }
     // Get most high level protocol
     pub fn get_protocol(&self) -> String {

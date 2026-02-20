@@ -36,14 +36,11 @@ pub fn draw(f: &mut Frame, app: &mut App) {
             .select(app.tabs.index)
     };
     f.render_widget(tabs, chunks[0]);
-    match app.tabs.index {
-        0 => draw_live_capture_tab(f, app, chunks[1]),
-        _ => {}
+    if app.tabs.index == 0 {
+        draw_live_capture_tab(f, app, chunks[1]);
     };
     // Draw footer
-    let footer = format!(
-        "Press <Q> quit | <SPACE> pause | <Up>/<Down> select | <B> jump latest"
-    );
+    let footer = "Press <Q> quit | <SPACE> pause | <Up>/<Down> select | <B> jump latest";
     let footer = Paragraph::new(text::Line::from(Span::styled(
         footer,
         Style::default().fg(Color::DarkGray),
@@ -207,10 +204,8 @@ fn packet_app_hint(packet: &crate::net::packet::PacketFrame) -> String {
                     return hint;
                 }
             }
-            if tcp.source == 443 || tcp.destination == 443 {
-                if is_tls_client_hello(payload) {
-                    return "TLS ClientHello".to_string();
-                }
+            if (tcp.source == 443 || tcp.destination == 443) && is_tls_client_hello(payload) {
+                return "TLS ClientHello".to_string();
             }
             if tcp.source == 80
                 || tcp.destination == 80
@@ -280,15 +275,14 @@ fn draw_packet_table(f: &mut Frame, app: &mut App, area: Rect) {
         Constraint::Min(20),
     ];
 
-    let table_title: String;
-    if app.config.network.interfaces.is_empty() {
-        table_title = "Capturing from all available interfaces".to_string();
+    let table_title: String = if app.config.network.interfaces.is_empty() {
+        "Capturing from all available interfaces".to_string()
     } else {
-        table_title = format!(
+        format!(
             "Capturing from {}",
             app.config.network.interfaces.join(", ")
-        );
-    }
+        )
+    };
 
     //let mut table_state = TableState::default();
     let table = Table::new(rows, widths)
@@ -369,10 +363,7 @@ fn draw_packet_detail(f: &mut Frame, app: &App, area: Rect) {
             if let Some(udp) = &transport.udp {
                 lines.push(Line::raw(format!(
                     "UDP: {} -> {} len={} checksum=0x{:04x}",
-                    udp.source,
-                    udp.destination,
-                    udp.length,
-                    udp.checksum
+                    udp.source, udp.destination, udp.length, udp.checksum
                 )));
             }
         }
@@ -404,7 +395,11 @@ fn draw_packet_detail(f: &mut Frame, app: &App, area: Rect) {
     }
 
     let detail = Paragraph::new(lines)
-        .block(Block::default().borders(Borders::ALL).title("Packet Details"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Packet Details"),
+        )
         .wrap(Wrap { trim: true });
     f.render_widget(detail, area);
 }
@@ -416,4 +411,41 @@ fn draw_live_capture_tab(f: &mut Frame, app: &mut App, area: Rect) {
         .split(area);
     draw_packet_table(f, app, chunks[0]);
     draw_packet_detail(f, app, chunks[1]);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tls_client_hello_detector_works() {
+        let payload = [0x16, 0x03, 0x03, 0x00, 0x20, 0x01, 0x00];
+        assert!(is_tls_client_hello(&payload));
+        assert!(!is_tls_client_hello(&[]));
+        assert!(!is_tls_client_hello(&[0x17, 0x03, 0x03, 0x00, 0x20, 0x01]));
+    }
+
+    #[test]
+    fn http_first_line_and_host_parse() {
+        let req = b"GET /index.html HTTP/1.1\r\nHost: example.com\r\nUser-Agent: x\r\n\r\n";
+        assert_eq!(
+            first_http_line(req).as_deref(),
+            Some("GET /index.html HTTP/1.1")
+        );
+        assert_eq!(http_host(req).as_deref(), Some("example.com"));
+
+        let res = b"HTTP/1.1 200 OK\r\nServer: test\r\n\r\n";
+        assert_eq!(first_http_line(res).as_deref(), Some("HTTP/1.1 200 OK"));
+        assert_eq!(http_host(res), None);
+    }
+
+    #[test]
+    fn payload_hex_preview_formats_and_truncates() {
+        assert_eq!(payload_hex_preview(&[], 8), "-");
+        assert_eq!(payload_hex_preview(&[0x01, 0xab, 0xff], 8), "01 ab ff");
+        assert_eq!(
+            payload_hex_preview(&[0xde, 0xad, 0xbe, 0xef, 0x01], 4),
+            "de ad be ef ..."
+        );
+    }
 }

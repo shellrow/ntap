@@ -59,8 +59,8 @@ impl<'a> App<'a> {
             talbe_state: TableState::default(),
             row_selecting: false,
             packets: Vec::new(),
-            enhanced_graphics: enhanced_graphics,
-            config: config,
+            enhanced_graphics,
+            config,
         }
     }
 
