@@ -2,10 +2,10 @@ use anyhow::Result;
 use std::fs::File;
 use std::path::Path;
 use tracing::Level;
+use tracing_subscriber::FmtSubscriber;
 use tracing_subscriber::fmt::time::ChronoLocal;
 use tracing_subscriber::fmt::writer::BoxMakeWriter;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
-use tracing_subscriber::FmtSubscriber;
 
 pub fn init_logger(config: &crate::config::AppConfig) -> Result<()> {
     // Init logger

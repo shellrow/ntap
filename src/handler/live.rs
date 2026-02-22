@@ -5,8 +5,8 @@ use nex::packet::ethernet::EtherType;
 use nex::packet::ip::IpNextProtocol;
 use std::collections::HashSet;
 use std::net::IpAddr;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread;
 
 #[derive(Debug, Clone, Default)]

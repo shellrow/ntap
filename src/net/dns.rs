@@ -5,9 +5,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures::stream::{self, StreamExt};
+use hickory_resolver::Resolver;
 use hickory_resolver::config::ResolverConfig;
 use hickory_resolver::name_server::TokioConnectionProvider;
-use hickory_resolver::Resolver;
 
 use crate::net::stat::NetStatStrage;
 

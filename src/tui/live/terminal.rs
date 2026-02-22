@@ -4,7 +4,7 @@ use anyhow::Result;
 use crossterm::{
     event::{Event, EventStream, KeyCode, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use futures::StreamExt;
 use ratatui::prelude::*;
