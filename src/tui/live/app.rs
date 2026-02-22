@@ -59,8 +59,8 @@ impl<'a> App<'a> {
             talbe_state: TableState::default(),
             row_selecting: false,
             packets: Vec::new(),
-            enhanced_graphics: enhanced_graphics,
-            config: config,
+            enhanced_graphics,
+            config,
         }
     }
 
@@ -68,6 +68,10 @@ impl<'a> App<'a> {
         // Select the previous row
         self.row_selecting = true;
         let row_count = self.packets.len();
+        if row_count == 0 {
+            self.talbe_state.select(None);
+            return;
+        }
         let i = match self.talbe_state.selected() {
             Some(i) => {
                 if i == 0 {
@@ -85,6 +89,10 @@ impl<'a> App<'a> {
         // Select the next row
         self.row_selecting = true;
         let row_count = self.packets.len();
+        if row_count == 0 {
+            self.talbe_state.select(None);
+            return;
+        }
         let i = match self.talbe_state.selected() {
             Some(i) => {
                 if i >= row_count - 1 {
@@ -130,7 +138,11 @@ impl<'a> App<'a> {
             }
             'b' => {
                 // Scroll to the bottom
-                self.talbe_state.select(Some(self.packets.len() - 1));
+                if self.packets.is_empty() {
+                    self.talbe_state.select(None);
+                } else {
+                    self.talbe_state.select(Some(self.packets.len() - 1));
+                }
                 self.row_selecting = false;
             }
             _ => {}
@@ -142,8 +154,10 @@ impl<'a> App<'a> {
         // Set the latest packets
         self.packets = packets;
         // If the user is not selecting a row, scroll to the bottom
-        if !self.row_selecting {
+        if !self.row_selecting && !self.packets.is_empty() {
             self.talbe_state.select(Some(self.packets.len() - 1));
+        } else if self.packets.is_empty() {
+            self.talbe_state.select(None);
         }
     }
 }

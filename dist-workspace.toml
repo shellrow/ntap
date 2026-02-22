@@ -4,7 +4,7 @@ members = ["cargo:."]
 # Config for 'dist'
 [dist]
 # The preferred dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.28.7"
+cargo-dist-version = "0.30.3"
 # CI backends to support
 ci = "github"
 # The installers to generate for each app
@@ -18,6 +18,6 @@ pr-run-mode = "plan"
 # Whether to install an updater program
 install-updater = false
 # Extra static files to include in each App (path relative to this Cargo.toml's dir)
-include = ["resources/doc/USAGE.md"]
+include = []
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"

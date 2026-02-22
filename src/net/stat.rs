@@ -11,7 +11,7 @@ use crate::net::socket::{
 };
 use crate::process::{ProcessDisplayInfo, ProcessInfo};
 use bytes::Bytes;
-use netdev::{MacAddr, Interface};
+use netdev::{Interface, MacAddr};
 use nex::packet::dns::{DnsPacket, DnsType};
 use nex::packet::packet::Packet;
 use serde::{Deserialize, Serialize};
@@ -500,10 +500,10 @@ impl NetStatStrage {
             if let Some(_tcp) = transport.tcp {
                 let socket_connection: SocketConnection = SocketConnection {
                     interface_name: interface_name.clone(),
-                    local_ip_addr: local_ip_addr,
-                    local_port: local_port,
-                    remote_ip_addr: remote_ip_addr,
-                    remote_port: remote_port,
+                    local_ip_addr,
+                    local_port,
+                    remote_ip_addr,
+                    remote_port,
                     protocol: TransportProtocol::TCP,
                 };
                 let socket_traffic: &mut TrafficInfo = connections_inner
@@ -522,11 +522,11 @@ impl NetStatStrage {
             }
             if let Some(_udp) = transport.udp {
                 let socket_connection: SocketConnection = SocketConnection {
-                    interface_name: interface_name,
-                    local_ip_addr: local_ip_addr,
-                    local_port: local_port,
-                    remote_ip_addr: remote_ip_addr,
-                    remote_port: remote_port,
+                    interface_name,
+                    local_ip_addr,
+                    local_port,
+                    remote_ip_addr,
+                    remote_port,
                     protocol: TransportProtocol::UDP,
                 };
                 let socket_traffic: &mut TrafficInfo = connections_inner
@@ -627,7 +627,7 @@ impl NetStatData {
             }
         };
         NetStatData {
-            default_interface: default_interface,
+            default_interface,
             traffic: TrafficInfo::new(),
             remote_hosts: HashMap::new(),
             connection_map: HashMap::new(),
@@ -753,18 +753,12 @@ impl NetStatData {
     }
 
     pub fn get_remote_hosts(&self, limit: Option<usize>) -> Vec<HostDisplayInfo> {
-        let ipv4_asn_db = crate::db::IPV4_ASN_DB.get().unwrap().read().unwrap();
-        let ipv4_country_db = crate::db::IPV4_COUNTRY_DB.get().unwrap().read().unwrap();
-        let ipv6_asn_db = crate::db::IPV6_ASN_DB.get().unwrap().read().unwrap();
-        let ipv6_country_db = crate::db::IPV6_COUNTRY_DB.get().unwrap().read().unwrap();
-        let as_db = crate::db::AS_DB.get().unwrap().read().unwrap();
-
         // Create a map to store the traffic info for each remote host.
         let mut host_traffic_map: HashMap<IpAddr, usize> = HashMap::new();
         self.remote_hosts.iter().for_each(|(_ip, host)| {
             match host_traffic_map.get(&host.ip_addr) {
                 Some(traffic) => {
-                    let mut traffic = traffic.clone();
+                    let mut traffic = *traffic;
                     traffic += host.traffic_info.bytes_sent;
                     traffic += host.traffic_info.bytes_received;
                     host_traffic_map.insert(host.ip_addr, traffic);
@@ -789,38 +783,8 @@ impl NetStatData {
                 let host = HostDisplayInfo {
                     ip_addr: host.ip_addr,
                     hostname: host.hostname.clone(),
-                    country_code: {
-                        if nex::net::ip::is_global_ip(&host.ip_addr) {
-                            match host.ip_addr {
-                                IpAddr::V4(ipv4) => match ipv4_country_db.lookup(&ipv4) {
-                                    Some(country) => country.to_string(),
-                                    None => "N/A".to_string(),
-                                },
-                                IpAddr::V6(ipv6) => match ipv6_country_db.lookup(&ipv6) {
-                                    Some(country) => country.to_string(),
-                                    None => "N/A".to_string(),
-                                },
-                            }
-                        } else {
-                            String::from("N/A")
-                        }
-                    },
-                    as_name: {
-                        if nex::net::ip::is_global_ip(&host.ip_addr) {
-                            match host.ip_addr {
-                                IpAddr::V4(ipv4) => ipv4_asn_db
-                                    .lookup(&ipv4)
-                                    .and_then(|asn| as_db.get_name(*asn))
-                                    .map_or_else(|| String::from("N/A"), |asn| asn.to_string()),
-                                IpAddr::V6(ipv6) => ipv6_asn_db
-                                    .lookup(&ipv6)
-                                    .and_then(|asn| as_db.get_name(*asn))
-                                    .map_or_else(|| String::from("N/A"), |asn| asn.to_string()),
-                            }
-                        } else {
-                            String::from("N/A")
-                        }
-                    },
+                    country_code: String::from("N/A"),
+                    as_name: String::from("N/A"),
                     traffic: host.traffic_info.to_display_info(),
                 };
                 remote_hosts.push(host);
@@ -838,23 +802,20 @@ impl NetStatData {
                 port: conn.local_port,
                 protocol: conn.protocol,
             };
-            match self.local_socket_map.get(&local_socket) {
-                Some(socket_process) => {
-                    if let Some(process) = &socket_process.process {
-                        match process_traffic_map.get(&process.pid) {
-                            Some(traffic) => {
-                                let mut traffic = traffic.clone();
-                                traffic.add_traffic(traffic_info);
-                                process_traffic_map.insert(process.pid, traffic);
-                            }
-                            None => {
-                                process_traffic_map.insert(process.pid, traffic_info.clone());
-                            }
+            if let Some(socket_process) = self.local_socket_map.get(&local_socket) {
+                if let Some(process) = &socket_process.process {
+                    match process_traffic_map.get(&process.pid) {
+                        Some(traffic) => {
+                            let mut traffic = traffic.clone();
+                            traffic.add_traffic(traffic_info);
+                            process_traffic_map.insert(process.pid, traffic);
                         }
-                        process_map.insert(process.pid, process.clone());
+                        None => {
+                            process_traffic_map.insert(process.pid, traffic_info.clone());
+                        }
                     }
+                    process_map.insert(process.pid, process.clone());
                 }
-                None => {}
             }
         });
         // Create process total traffic map from process_traffic_map
@@ -924,7 +885,7 @@ impl NetStatData {
                         IpAddr::V6(_) => AddressFamily::IPv6,
                     },
                     traffic: traffic.to_display_info(),
-                    process: process,
+                    process,
                 };
                 top_connections.push(socket_traffic_info);
             }
@@ -973,7 +934,7 @@ impl NetStatData {
                         IpAddr::V6(_) => AddressFamily::IPv6,
                     },
                     traffic: traffic.to_display_info(),
-                    process: process,
+                    process,
                 };
                 if opt.address_family.contains(&socket_traffic_info.ip_version)
                     && opt
@@ -988,8 +949,32 @@ impl NetStatData {
     }
 
     pub fn get_app_protocols(&self, limit: Option<usize>) -> Vec<ServiceDisplayInfo> {
-        let tcp_db = crate::db::TCP_SERVICE_DB.get().unwrap().read().unwrap();
-        let udp_db = crate::db::UDP_SERVICE_DB.get().unwrap().read().unwrap();
+        let tcp_db = match crate::db::TCP_SERVICE_DB.get() {
+            Some(db) => match db.read() {
+                Ok(guard) => Some(guard),
+                Err(e) => {
+                    tracing::warn!("failed to read TCP service DB: {}", e);
+                    None
+                }
+            },
+            None => {
+                tracing::warn!("TCP service DB is not initialized");
+                None
+            }
+        };
+        let udp_db = match crate::db::UDP_SERVICE_DB.get() {
+            Some(db) => match db.read() {
+                Ok(guard) => Some(guard),
+                Err(e) => {
+                    tracing::warn!("failed to read UDP service DB: {}", e);
+                    None
+                }
+            },
+            None => {
+                tracing::warn!("UDP service DB is not initialized");
+                None
+            }
+        };
         let mut protocol_port_map: HashMap<ProtocolPort, TrafficInfo> = HashMap::new();
         self.connection_map.iter().for_each(|(conn, traffic_info)| {
             let protocol_port: ProtocolPort = ProtocolPort {
@@ -1026,11 +1011,13 @@ impl NetStatData {
                     protocol: protocol_port.protocol.as_str().to_string(),
                     name: match protocol_port.protocol {
                         TransportProtocol::TCP => tcp_db
-                            .get_name(protocol_port.port)
+                            .as_ref()
+                            .and_then(|db| db.get_name(protocol_port.port))
                             .unwrap_or("Unknown TCP Service")
                             .to_string(),
                         TransportProtocol::UDP => udp_db
-                            .get_name(protocol_port.port)
+                            .as_ref()
+                            .and_then(|db| db.get_name(protocol_port.port))
                             .unwrap_or("Unknown UDP Service")
                             .to_string(),
                     },

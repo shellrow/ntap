@@ -56,9 +56,12 @@ pub fn download_db_files() -> Result<()> {
         .with_target(false)
         .with_timer(ChronoLocal::rfc_3339())
         .finish();
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+    if let Err(e) = tracing::subscriber::set_global_default(subscriber) {
+        eprintln!("logger already initialized or unavailable: {}", e);
+    }
 
-    let database_dir = crate::sys::get_database_dir_path().unwrap();
+    let database_dir = crate::sys::get_database_dir_path()
+        .ok_or_else(|| anyhow::anyhow!("failed to resolve database directory path"))?;
     // OUI
     match download_file(
         crate::db::oui::OUI_R2_URL,

@@ -52,9 +52,9 @@ impl PacketFrame {
         frame: nex::packet::frame::Frame,
     ) -> PacketFrame {
         PacketFrame {
-            capture_no: capture_no,
-            if_index: if_index,
-            if_name: if_name,
+            capture_no,
+            if_index,
+            if_name,
             datalink: frame.datalink,
             ip: frame.ip,
             transport: frame.transport,
@@ -72,14 +72,11 @@ impl PacketFrame {
         };
         // Remove UTC offset that start from + or -
         let datetime_vec = timestamp.split('+').collect::<Vec<&str>>();
-        let timestamp: String = if datetime_vec.len() > 1 {
-            datetime_vec[0].to_string()
-        } else if datetime_vec.len() > 1 {
+        if datetime_vec.len() > 1 {
             datetime_vec[0].to_string()
         } else {
             timestamp
-        };
-        timestamp
+        }
     }
     // Get most high level protocol
     pub fn get_protocol(&self) -> String {
@@ -206,7 +203,7 @@ impl PacketStorage {
     }
 
     pub fn add_packet(&self, packet: PacketFrame) {
-        match self.storage.try_write() {
+        match self.storage.write() {
             Ok(mut storage) => {
                 // If the storage is full, remove the oldest packet
                 if storage.len() == self.max_capacity {
@@ -214,18 +211,23 @@ impl PacketStorage {
                 }
                 storage.push_back(packet);
             }
-            Err(_) => {
-                // TODO: Log error or return error
+            Err(e) => {
+                tracing::error!("failed to lock packet storage for write: {}", e);
+                let mut storage = e.into_inner();
+                if storage.len() == self.max_capacity {
+                    storage.pop_front();
+                }
+                storage.push_back(packet);
             }
         }
     }
 
     pub fn get_packets(&self) -> Vec<PacketFrame> {
-        match self.storage.try_read() {
+        match self.storage.read() {
             Ok(storage) => storage.iter().cloned().collect(),
-            Err(_) => {
-                // TODO: Log error or return error
-                Vec::new()
+            Err(e) => {
+                tracing::error!("failed to lock packet storage for read: {}", e);
+                e.into_inner().iter().cloned().collect()
             }
         }
     }

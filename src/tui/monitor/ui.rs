@@ -1,413 +1,342 @@
+use crate::tui::monitor::app::{App, FocusTab};
 use ratatui::{prelude::*, widgets::*};
-
-use crate::tui::monitor::app::App;
+use std::collections::HashMap;
 
 pub fn draw(f: &mut Frame, app: &mut App) {
-    let chunks = Layout::default()
+    let layout = Layout::default()
+        .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3),
+            Constraint::Length(4),
             Constraint::Min(0),
             Constraint::Length(1),
         ])
-        .split(f.size());
-    let titles = app
-        .tabs
-        .titles
-        .iter()
-        .map(|t| text::Line::from(Span::styled(*t, Style::default().fg(Color::Green))))
-        .collect();
-    let tabs = if app.should_pause {
-        let pause_title = format!("{} [Paused] press <SPACE> to resume", app.title);
-        Tabs::new(titles)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(pause_title)
-                    .style(Style::default().fg(Color::Yellow)),
-            )
-            .highlight_style(Style::default().fg(Color::LightBlue))
-            .select(app.tabs.index)
-    } else {
-        Tabs::new(titles)
-            .block(Block::default().borders(Borders::ALL).title(app.title))
-            .highlight_style(Style::default().fg(Color::LightBlue))
-            .select(app.tabs.index)
-    };
-    f.render_widget(tabs, chunks[0]);
-    match app.tabs.index {
-        0 => draw_overview_tab(f, app, chunks[1]),
-        1 => draw_remotehosts_tab(f, app, chunks[1]),
-        2 => draw_connections_tab(f, app, chunks[1]),
-        _ => {}
-    };
-    // Draw footer
-    let footer = format!("Press <Q> to quit, <TAB> to switch tabs, <SPACE> to pause, <T> to toggle bandwidth display, <Up>/<Down> to scroll");
-    let footer = Paragraph::new(text::Line::from(Span::styled(
-        footer,
-        Style::default().fg(Color::DarkGray),
-    )));
-    f.render_widget(footer, chunks[2]);
+        .split(f.area());
+
+    draw_header(f, app, layout[0]);
+    draw_summary(f, app, layout[1]);
+
+    match app.selected_tab {
+        FocusTab::Overview => draw_overview(f, app, layout[2]),
+        FocusTab::Hosts => draw_hosts(f, app, layout[2]),
+        FocusTab::Connections => draw_connections(f, app, layout[2]),
+        FocusTab::Processes => draw_processes(f, app, layout[2]),
+    }
+
+    let footer = Paragraph::new(
+        "<Tab>/<Shift+Tab> switch tabs | <Space> pause | <T> total/bandwidth | <Q> quit",
+    )
+    .style(Style::default().fg(Color::DarkGray));
+    f.render_widget(footer, layout[3]);
 }
 
-fn draw_summary(f: &mut Frame, app: &mut App, area: Rect) {
-    // Draw network interface
+fn draw_header(f: &mut Frame, app: &App, area: Rect) {
+    let tabs = Tabs::new(
+        FocusTab::ALL
+            .iter()
+            .map(|tab| Line::raw(tab.title()))
+            .collect::<Vec<Line>>(),
+    )
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(if app.should_pause {
+                format!("{} [PAUSED]", app.title)
+            } else {
+                app.title.clone()
+            }),
+    )
+    .select(
+        FocusTab::ALL
+            .iter()
+            .position(|tab| *tab == app.selected_tab)
+            .unwrap_or(0),
+    )
+    .highlight_style(
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
+    )
+    .divider(" | ");
+    f.render_widget(tabs, area);
+}
+
+fn draw_summary(f: &mut Frame, app: &App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
-    // Draw total ingress
-    let ingress_packets: String = if app.config.display.show_bandwidth {
+    let ingress_packets = if app.show_bandwidth {
         app.netstat_data.traffic.formatted_ingress_packets_per_sec()
     } else {
         app.netstat_data.traffic.packet_received.to_string()
     };
-    let ingress_traffic: String = if app.config.display.show_bandwidth {
+    let ingress_bytes = if app.show_bandwidth {
         app.netstat_data.traffic.formatted_ingress_bytes_per_sec()
     } else {
         app.netstat_data.traffic.formatted_received_bytes()
     };
-    let ingress_text = vec![
-        text::Line::from(format!("Packets: {}", ingress_packets)),
-        text::Line::from(format!("Bytes: {}", ingress_traffic)),
-    ];
-    let ingress_block = Block::default()
-        .borders(Borders::ALL)
-        .title("↓ Total Ingress");
-    let ingress_paragraph = Paragraph::new(ingress_text)
-        .block(ingress_block)
-        .wrap(Wrap { trim: true });
-    f.render_widget(ingress_paragraph, chunks[0]);
-
-    // Draw total egress
-    let egress_packets: String = if app.config.display.show_bandwidth {
+    let egress_packets = if app.show_bandwidth {
         app.netstat_data.traffic.formatted_egress_packets_per_sec()
     } else {
         app.netstat_data.traffic.packet_sent.to_string()
     };
-    let eggress_traffic: String = if app.config.display.show_bandwidth {
+    let egress_bytes = if app.show_bandwidth {
         app.netstat_data.traffic.formatted_egress_bytes_per_sec()
     } else {
         app.netstat_data.traffic.formatted_sent_bytes()
     };
-    let eggress_text = vec![
-        text::Line::from(format!("Packets: {}", egress_packets)),
-        text::Line::from(format!("Bytes: {}", eggress_traffic)),
-    ];
-    let eggress_block = Block::default()
-        .borders(Borders::ALL)
-        .title("↑ Total Egress");
-    let eggress_paragraph = Paragraph::new(eggress_text)
-        .block(eggress_block)
-        .wrap(Wrap { trim: true });
-    f.render_widget(eggress_paragraph, chunks[1]);
+
+    let ingress = Paragraph::new(vec![
+        Line::raw(format!("Packets: {ingress_packets}")),
+        Line::raw(format!("Bytes:   {ingress_bytes}")),
+    ])
+    .block(Block::default().borders(Borders::ALL).title("Ingress"));
+
+    let egress = Paragraph::new(vec![
+        Line::raw(format!("Packets: {egress_packets}")),
+        Line::raw(format!("Bytes:   {egress_bytes}")),
+    ])
+    .block(Block::default().borders(Borders::ALL).title("Egress"));
+
+    f.render_widget(ingress, chunks[0]);
+    f.render_widget(egress, chunks[1]);
 }
 
-fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
-    let area_chunks = Layout::default()
-        .constraints(vec![Constraint::Percentage(100)])
-        .direction(Direction::Horizontal)
-        .split(area);
-    {
-        let inner_chunks = Layout::default()
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-            .split(area_chunks[0]);
-
-        // Draw top Remote Address Table
-        let rows = app
-            .remote_hosts
-            .iter()
-            .take(app.config.display.top_remote_hosts)
-            .map(|host| {
-                let ingress_traffic: String = if app.config.display.show_bandwidth {
-                    host.traffic.formatted_ingress_bytes_per_sec.clone()
-                } else {
-                    host.traffic.formatted_received_bytes.clone()
-                };
-                let egress_traffic: String = if app.config.display.show_bandwidth {
-                    host.traffic.formatted_egress_bytes_per_sec.clone()
-                } else {
-                    host.traffic.formatted_sent_bytes.clone()
-                };
-                Row::new(vec![
-                    host.ip_addr.to_string(),
-                    ingress_traffic,
-                    egress_traffic,
-                    host.country_code.clone(),
-                    host.as_name.clone(),
-                    host.hostname.clone(),
-                ])
-            })
-            .collect::<Vec<Row>>();
-        let widths = [
-            Constraint::Length(40),
-            Constraint::Length(11),
-            Constraint::Length(11),
-            Constraint::Length(8),
-            Constraint::Length(30),
-            Constraint::Length(40),
-        ];
-
-        //let mut table_state = TableState::default();
-        let table = Table::new(rows, widths)
-            .column_spacing(1)
-            .header(
-                Row::new(vec![
-                    "IP Address",
-                    "↓ Bytes",
-                    "↑ Bytes",
-                    "Country",
-                    "AS Name",
-                    "Hostname",
-                ])
-                .style(Style::new().bold()), //.bottom_margin(1),
-            )
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Top Remote Addresses"),
-            )
-            .highlight_style(Style::new().reversed())
-            .highlight_symbol(">>");
-
-        f.render_widget(table, inner_chunks[0]);
-
-        let rows = app
-            .connections
-            .iter()
-            .take(app.config.display.connection_count)
-            .map(|conn| {
-                let remote_ip_string = if let Some(remote_ip_addr) = &conn.remote_ip_addr {
-                    remote_ip_addr.to_string()
-                } else {
-                    "".to_string()
-                };
-                let remote_port_string = if let Some(remote_port) = &conn.remote_port {
-                    remote_port.to_string()
-                } else {
-                    "".to_string()
-                };
-                let mut process_id_string = "".to_string();
-                let mut process_name_string = "".to_string();
-                if let Some(process) = &conn.process {
-                    process_id_string = process.pid.to_string();
-                    process_name_string = process.name.clone();
-                }
-                let ingress_traffic: String = if app.config.display.show_bandwidth {
-                    conn.traffic.formatted_ingress_bytes_per_sec.clone()
-                } else {
-                    conn.traffic.formatted_received_bytes.clone()
-                };
-                let egress_traffic: String = if app.config.display.show_bandwidth {
-                    conn.traffic.formatted_egress_bytes_per_sec.clone()
-                } else {
-                    conn.traffic.formatted_sent_bytes.clone()
-                };
-                Row::new(vec![
-                    conn.protocol.as_str().to_string(),
-                    format!(
-                        "{}:{}",
-                        conn.local_ip_addr.to_string(),
-                        conn.local_port.to_string()
-                    ),
-                    format!("{}:{}", remote_ip_string, remote_port_string),
-                    ingress_traffic,
-                    egress_traffic,
-                    process_id_string,
-                    process_name_string,
-                ])
-            })
-            .collect::<Vec<Row>>();
-        let widths = [
-            Constraint::Length(8),
-            Constraint::Length(46),
-            Constraint::Length(46),
-            Constraint::Length(11),
-            Constraint::Length(11),
-            Constraint::Length(5),
-            Constraint::Length(20),
-        ];
-        let table = Table::new(rows, widths)
-            .column_spacing(1)
-            .header(
-                Row::new(vec![
-                    "Protocol",
-                    "Local Socket",
-                    "Remote Socket",
-                    "↓ Bytes",
-                    "↑ Bytes",
-                    "PID",
-                    "Process Name",
-                ])
-                .style(Style::new().bold()), //.bottom_margin(1),
-            )
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Top Connections"),
-            )
-            .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
-            .highlight_symbol(">>");
-        f.render_widget(table, inner_chunks[1]);
-        //f.render_stateful_widget(table, inner_chunks[1], &mut app.talbe_state);
-    }
+fn draw_overview(f: &mut Frame, app: &App, area: Rect) {
+    draw_overview_flows(f, app, area);
 }
 
-fn draw_remotehosts_table(f: &mut Frame, app: &mut App, area: Rect) {
-    // Draw top Remote Address Table
+fn draw_hosts(f: &mut Frame, app: &App, area: Rect) {
+    draw_top_hosts(f, app, area, None);
+}
+
+fn draw_connections(f: &mut Frame, app: &App, area: Rect) {
+    draw_top_connections(f, app, area, None);
+}
+
+fn draw_processes(f: &mut Frame, app: &App, area: Rect) {
+    let rows = app.processes.iter().map(|process| {
+        let ingress = if app.show_bandwidth {
+            process.traffic.formatted_ingress_bytes_per_sec.clone()
+        } else {
+            process.traffic.formatted_received_bytes.clone()
+        };
+        let egress = if app.show_bandwidth {
+            process.traffic.formatted_egress_bytes_per_sec.clone()
+        } else {
+            process.traffic.formatted_sent_bytes.clone()
+        };
+        Row::new(vec![
+            process.pid.to_string(),
+            process.name.clone(),
+            ingress,
+            egress,
+        ])
+    });
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Length(8),
+            Constraint::Min(20),
+            Constraint::Length(14),
+            Constraint::Length(14),
+        ],
+    )
+    .header(
+        Row::new(["PID", "Process", "Ingress", "Egress"])
+            .style(Style::default().add_modifier(Modifier::BOLD)),
+    )
+    .block(Block::default().borders(Borders::ALL).title("Processes"))
+    .column_spacing(1);
+    f.render_widget(table, area);
+}
+
+fn draw_top_hosts(f: &mut Frame, app: &App, area: Rect, limit: Option<usize>) {
     let rows = app
         .remote_hosts
         .iter()
+        .take(limit.unwrap_or(app.remote_hosts.len()))
         .map(|host| {
-            let ingress_traffic: String = if app.config.display.show_bandwidth {
+            let ingress = if app.show_bandwidth {
                 host.traffic.formatted_ingress_bytes_per_sec.clone()
             } else {
                 host.traffic.formatted_received_bytes.clone()
             };
-            let egress_traffic: String = if app.config.display.show_bandwidth {
+            let egress = if app.show_bandwidth {
                 host.traffic.formatted_egress_bytes_per_sec.clone()
             } else {
                 host.traffic.formatted_sent_bytes.clone()
             };
             Row::new(vec![
                 host.ip_addr.to_string(),
-                ingress_traffic,
-                egress_traffic,
-                host.country_code.clone(),
-                host.as_name.clone(),
+                ingress,
+                egress,
                 host.hostname.clone(),
             ])
-        })
-        .collect::<Vec<Row>>();
-    let widths = [
-        Constraint::Length(40),
-        Constraint::Length(11),
-        Constraint::Length(11),
-        Constraint::Length(8),
-        Constraint::Length(30),
-        Constraint::Length(40),
-    ];
+        });
 
-    //let mut table_state = TableState::default();
-    let table = Table::new(rows, widths)
-        .column_spacing(1)
-        //.style(Style::new().blue())
-        .header(
-            Row::new(vec![
-                "IP Address",
-                "↓ Bytes",
-                "↑ Bytes",
-                "Country",
-                "AS Name",
-                "Hostname",
-            ])
-            .style(Style::new().bold()), //.bottom_margin(1),
-        )
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Remote Addresses"),
-        )
-        .highlight_style(Style::new().reversed())
-        .highlight_symbol(">>");
-
-    //f.render_widget(table, area);
-    f.render_stateful_widget(table, area, &mut app.talbe_state);
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Length(40),
+            Constraint::Length(14),
+            Constraint::Length(14),
+            Constraint::Min(16),
+        ],
+    )
+    .header(
+        Row::new(["IP", "Ingress", "Egress", "Hostname"])
+            .style(Style::default().add_modifier(Modifier::BOLD)),
+    )
+    .block(Block::default().borders(Borders::ALL).title("Remote Hosts"))
+    .column_spacing(1);
+    f.render_widget(table, area);
 }
 
-fn draw_connection_table(f: &mut Frame, app: &mut App, area: Rect) {
+fn draw_top_connections(f: &mut Frame, app: &App, area: Rect, limit: Option<usize>) {
     let rows = app
         .connections
         .iter()
+        .take(limit.unwrap_or(app.connections.len()))
         .map(|conn| {
-            let remote_ip_string = if let Some(remote_ip_addr) = &conn.remote_ip_addr {
-                remote_ip_addr.to_string()
-            } else {
-                "".to_string()
-            };
-            let remote_port_string = if let Some(remote_port) = &conn.remote_port {
-                remote_port.to_string()
-            } else {
-                "".to_string()
-            };
-            let mut process_id_string = "".to_string();
-            let mut process_name_string = "".to_string();
-            if let Some(process) = &conn.process {
-                process_id_string = process.pid.to_string();
-                process_name_string = process.name.clone();
-            }
-            let ingress_traffic: String = if app.config.display.show_bandwidth {
+            let remote_ip = conn
+                .remote_ip_addr
+                .map(|ip| ip.to_string())
+                .unwrap_or_else(|| "-".to_string());
+            let remote_port = conn
+                .remote_port
+                .map(|port| port.to_string())
+                .unwrap_or_else(|| "-".to_string());
+            let ingress = if app.show_bandwidth {
                 conn.traffic.formatted_ingress_bytes_per_sec.clone()
             } else {
                 conn.traffic.formatted_received_bytes.clone()
             };
-            let egress_traffic: String = if app.config.display.show_bandwidth {
+            let egress = if app.show_bandwidth {
                 conn.traffic.formatted_egress_bytes_per_sec.clone()
             } else {
                 conn.traffic.formatted_sent_bytes.clone()
             };
+            let process_name = conn
+                .process
+                .as_ref()
+                .map(|process| process.name.clone())
+                .unwrap_or_else(|| "-".to_string());
             Row::new(vec![
                 conn.protocol.as_str().to_string(),
-                format!(
-                    "{}:{}",
-                    conn.local_ip_addr.to_string(),
-                    conn.local_port.to_string()
-                ),
-                format!("{}:{}", remote_ip_string, remote_port_string),
-                ingress_traffic,
-                egress_traffic,
-                process_id_string,
-                process_name_string,
+                format!("{}:{}", conn.local_ip_addr, conn.local_port),
+                format!("{remote_ip}:{remote_port}"),
+                ingress,
+                egress,
+                process_name,
             ])
+        });
+
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Length(6),
+            Constraint::Length(32),
+            Constraint::Length(32),
+            Constraint::Length(14),
+            Constraint::Length(14),
+            Constraint::Min(16),
+        ],
+    )
+    .header(
+        Row::new(["Proto", "Local", "Remote", "Ingress", "Egress", "Process"])
+            .style(Style::default().add_modifier(Modifier::BOLD)),
+    )
+    .block(Block::default().borders(Borders::ALL).title("Connections"))
+    .column_spacing(1);
+    f.render_widget(table, area);
+}
+
+fn draw_overview_flows(f: &mut Frame, app: &App, area: Rect) {
+    let hostnames: HashMap<_, _> = app
+        .remote_hosts
+        .iter()
+        .filter_map(|host| {
+            if host.hostname.is_empty() {
+                None
+            } else {
+                Some((host.ip_addr, host.hostname.as_str()))
+            }
         })
-        .collect::<Vec<Row>>();
-    let widths = [
-        Constraint::Length(8),
-        Constraint::Length(46),
-        Constraint::Length(46),
-        Constraint::Length(11),
-        Constraint::Length(11),
-        Constraint::Length(5),
-        Constraint::Length(20),
-    ];
-    let table = Table::new(rows, widths)
-        .column_spacing(1)
-        .header(
+        .collect();
+
+    let rows = app
+        .connections
+        .iter()
+        .take(app.config.display.connection_count)
+        .map(|conn| {
+            let remote_ip = conn
+                .remote_ip_addr
+                .map(|ip| ip.to_string())
+                .unwrap_or_else(|| "-".to_string());
+            let remote_port = conn
+                .remote_port
+                .map(|port| port.to_string())
+                .unwrap_or_else(|| "-".to_string());
+            let ingress = if app.show_bandwidth {
+                conn.traffic.formatted_ingress_bytes_per_sec.clone()
+            } else {
+                conn.traffic.formatted_received_bytes.clone()
+            };
+            let egress = if app.show_bandwidth {
+                conn.traffic.formatted_egress_bytes_per_sec.clone()
+            } else {
+                conn.traffic.formatted_sent_bytes.clone()
+            };
+            let hostname = conn
+                .remote_ip_addr
+                .and_then(|ip| hostnames.get(&ip).copied())
+                .unwrap_or("-");
+            let process = conn
+                .process
+                .as_ref()
+                .map(|p| p.name.as_str())
+                .unwrap_or("-");
+
             Row::new(vec![
-                "Protocol",
-                "Local Socket",
-                "Remote Socket",
-                "↓ Bytes",
-                "↑ Bytes",
-                "PID",
-                "Process Name",
+                format!("{}:{}", conn.local_ip_addr, conn.local_port),
+                format!("{remote_ip}:{remote_port}"),
+                ingress,
+                egress,
+                hostname.to_string(),
+                process.to_string(),
             ])
-            .style(Style::new().bold()), //.bottom_margin(1),
-        )
-        .block(Block::default().borders(Borders::ALL).title("Connections"))
-        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
-        .highlight_symbol(">>");
-    //f.render_widget(table, area);
-    f.render_stateful_widget(table, area, &mut app.talbe_state);
-}
+        });
 
-fn draw_overview_tab(f: &mut Frame, app: &mut App, area: Rect) {
-    let chunks = Layout::default()
-        .constraints([Constraint::Length(4), Constraint::Min(8)])
-        .split(area);
-    draw_summary(f, app, chunks[0]);
-    draw_top_data(f, app, chunks[1]);
-}
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Length(31),
+            Constraint::Length(31),
+            Constraint::Length(14),
+            Constraint::Length(14),
+            Constraint::Min(20),
+            Constraint::Min(16),
+        ],
+    )
+    .header(
+        Row::new([
+            "Local Address",
+            "Remote Address",
+            "Ingress",
+            "Egress",
+            "Hostname",
+            "Process",
+        ])
+        .style(Style::default().add_modifier(Modifier::BOLD)),
+    )
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Overview Connections"),
+    )
+    .column_spacing(1);
 
-fn draw_remotehosts_tab(f: &mut Frame, app: &mut App, area: Rect) {
-    let chunks = Layout::default()
-        .constraints(vec![Constraint::Percentage(100)])
-        .split(area);
-    draw_remotehosts_table(f, app, chunks[0]);
-}
-
-fn draw_connections_tab(f: &mut Frame, app: &mut App, area: Rect) {
-    let chunks = Layout::default()
-        .constraints(vec![Constraint::Percentage(100)])
-        .split(area);
-    draw_connection_table(f, app, chunks[0]);
+    f.render_widget(table, area);
 }

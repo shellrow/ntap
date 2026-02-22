@@ -6,17 +6,38 @@
 Network traffic monitor/analyzer, for Linux, macOS, and Windows.
 
 ## Overview
-**ntap** provides comprehensive insights into your network's activity, enabling users to monitor traffic, manage connections, and view network configurations with ease.
-
-## Features
-- **Network Statistics**: Dive into comprehensive statistics about your network traffic, covering bytes/bandwidth usage, top remote hosts, connections, and processes.
-- **Real-time Monitoring**: Monitor network utilization with country and Autonomous System (AS) or Internet Service Provider (ISP) information as it unfolds.
-- **Live Packet Capture**: Continuously track the flow of network packets in real-time, offering insights into ongoing traffic.
-- **Connection Management**: Quickly and effectively analyze active network connections to optimize performance and security.
-- **Interface and Routing Insights**: Obtain detailed views of network interfaces and routing tables to enhance network management and troubleshooting.
+**ntap** is a cross-platform network traffic monitor/analyzer focused on:
+- Traffic monitoring (`monitor`)
+- Packet capture (`live`)
 
 ## Usage
-See [usage](resources/doc/USAGE.md)
+### Commands
+- `ntap` or `ntap monitor` : monitor mode
+- `ntap live` : live packet capture mode
+- `ntap interfaces` : list available interfaces
+- `ntap interface` : show default interface
+
+### Common options
+- `-i, --interfaces <iface1,iface2>` : interface filter
+- `-P, --protocols <tcp,udp,...>` : protocol filter
+- `-a, --ips <ip1,ip2>` : host filter
+- `-p, --ports <port1,port2>` : port filter
+- `-r, --tickrate <ms>` : UI refresh tick (global)
+
+### Live mode options
+- `-l, --limit <count>` : max packets kept in live table
+
+### Examples
+```sh
+# Start monitor mode (default)
+ntap
+
+# Monitor specific interfaces and protocols
+ntap monitor -i en0 -P tcp,udp
+
+# Live capture with a packet list cap
+ntap live -i en0 -P tcp -l 200
+```
 
 ## Prerequisites
 - Ensure you have a compatible operating system (Linux, macOS, Windows).

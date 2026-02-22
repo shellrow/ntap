@@ -76,14 +76,11 @@ pub fn show_socket_info(app: &ArgMatches) -> Result<()> {
         table.add_row(vec![
             Cell::new(&socket.protocol.as_str()),
             Cell::new(format!("{}:{}", socket.local_ip_addr, socket.local_port)),
-            if socket.remote_ip_addr.is_none() {
-                Cell::new("")
+            if let (Some(remote_ip), Some(remote_port)) = (socket.remote_ip_addr, socket.remote_port)
+            {
+                Cell::new(format!("{}:{}", remote_ip, remote_port))
             } else {
-                Cell::new(format!(
-                    "{}:{}",
-                    socket.remote_ip_addr.unwrap(),
-                    socket.remote_port.unwrap()
-                ))
+                Cell::new("")
             },
             if let Some(process) = &socket.process {
                 Cell::new(&process.pid.to_string())

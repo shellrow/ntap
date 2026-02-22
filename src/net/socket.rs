@@ -184,6 +184,7 @@ pub enum AddressFamily {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Hash, Eq, PartialOrd, Ord, Copy)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum TransportProtocol {
     TCP,
     UDP,
@@ -214,9 +215,9 @@ pub struct LocalSocket {
 impl LocalSocket {
     pub fn new(interface_name: String, port: u16, protocol: TransportProtocol) -> Self {
         LocalSocket {
-            interface_name: interface_name,
-            port: port,
-            protocol: protocol,
+            interface_name,
+            port,
+            protocol,
         }
     }
     pub fn to_key_string(&self) -> String {
@@ -237,11 +238,9 @@ pub struct ProtocolPort {
 
 impl ProtocolPort {
     pub fn new(port: u16, protocol: TransportProtocol) -> Self {
-        ProtocolPort {
-            port: port,
-            protocol: protocol,
-        }
+        ProtocolPort { port, protocol }
     }
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_key_string(&self) -> String {
         format!("{}-{}", self.port, self.protocol.as_str())
     }
@@ -268,8 +267,8 @@ impl SocketInfoOption {
         transport_protocol: Vec<TransportProtocol>,
     ) -> SocketInfoOption {
         SocketInfoOption {
-            address_family: address_family,
-            transport_protocol: transport_protocol,
+            address_family,
+            transport_protocol,
         }
     }
     pub fn get_address_family_flags(&self) -> AddressFamilyFlags {
@@ -306,7 +305,13 @@ pub fn get_sockets_info(opt: SocketInfoOption) -> Vec<SocketInfo> {
     let af_flags: AddressFamilyFlags = opt.get_address_family_flags();
     let proto_flags: ProtocolFlags = opt.get_protocol_flags();
     let sockets: Vec<netsock::socket::SocketInfo> =
-        netsock::get_sockets(af_flags, proto_flags).unwrap();
+        match netsock::get_sockets(af_flags, proto_flags) {
+            Ok(sockets) => sockets,
+            Err(e) => {
+                tracing::warn!("[get_sockets_info] failed to fetch socket list: {}", e);
+                return Vec::new();
+            }
+        };
     let mut sockets_info: Vec<SocketInfo> = Vec::new();
 
     for si in sockets {
@@ -327,11 +332,10 @@ pub fn get_sockets_info(opt: SocketInfoOption) -> Vec<SocketInfo> {
                     } else {
                         AddressFamily::IPv6
                     },
-                    process: if let Some(proc) = si.processes.first() {
-                        Some(ProcessInfo::new(proc.pid, proc.name.clone()))
-                    } else {
-                        None
-                    },
+                    process: si
+                        .processes
+                        .first()
+                        .map(|proc| ProcessInfo::new(proc.pid, proc.name.clone())),
                 };
                 sockets_info.push(socket_info);
             }
@@ -351,11 +355,10 @@ pub fn get_sockets_info(opt: SocketInfoOption) -> Vec<SocketInfo> {
                     } else {
                         AddressFamily::IPv6
                     },
-                    process: if let Some(proc) = si.processes.first() {
-                        Some(ProcessInfo::new(proc.pid, proc.name.clone()))
-                    } else {
-                        None
-                    },
+                    process: si
+                        .processes
+                        .first()
+                        .map(|proc| ProcessInfo::new(proc.pid, proc.name.clone())),
                 };
                 sockets_info.push(socket_info);
             }
@@ -374,15 +377,12 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
         // Create Vec<LocalSocket>
         let mut local_sockets: HashSet<LocalSocket> = HashSet::new();
         for si in &sockets_info {
-            match local_ip_map.get(&si.local_ip_addr) {
-                Some(interface_name) => {
-                    local_sockets.insert(LocalSocket::new(
-                        interface_name.to_owned(),
-                        si.local_port,
-                        si.protocol,
-                    ));
-                }
-                None => {}
+            if let Some(interface_name) = local_ip_map.get(&si.local_ip_addr) {
+                local_sockets.insert(LocalSocket::new(
+                    interface_name.to_owned(),
+                    si.local_port,
+                    si.protocol,
+                ));
             }
         }
         // Lock the local_socket_map
@@ -390,6 +390,7 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
             Ok(connections) => connections,
             Err(e) => {
                 tracing::error!("[socket_info_update] lock error: {}", e);
+                std::thread::sleep(std::time::Duration::from_millis(25));
                 continue;
             }
         };
@@ -405,20 +406,17 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
         }
         // Update socket info
         for socket_info in sockets_info {
-            match local_ip_map.get(&socket_info.local_ip_addr) {
-                Some(interface_name) => {
-                    let local_socket = LocalSocket::new(
-                        interface_name.to_owned(),
-                        socket_info.local_port,
-                        socket_info.protocol,
-                    );
-                    let socket_process = local_socket_inner
-                        .entry(local_socket)
-                        .or_insert(SocketProcess::new());
-                    socket_process.status = socket_info.status;
-                    socket_process.process = socket_info.process.clone();
-                }
-                None => {}
+            if let Some(interface_name) = local_ip_map.get(&socket_info.local_ip_addr) {
+                let local_socket = LocalSocket::new(
+                    interface_name.to_owned(),
+                    socket_info.local_port,
+                    socket_info.protocol,
+                );
+                let socket_process = local_socket_inner
+                    .entry(local_socket)
+                    .or_insert(SocketProcess::new());
+                socket_process.status = socket_info.status;
+                socket_process.process = socket_info.process.clone();
             }
         }
         // Drop the lock

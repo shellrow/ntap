@@ -1,164 +1,101 @@
-#![allow(unused)]
-
+use crate::config::AppConfig;
+use crate::net::host::HostDisplayInfo;
+use crate::net::socket::SocketDisplayInfo;
+use crate::net::stat::NetStatData;
+use crate::process::ProcessDisplayInfo;
 use std::time::Duration;
 
-use crate::{
-    config::AppConfig,
-    net::{
-        host::HostDisplayInfo, service::ServiceDisplayInfo, socket::SocketDisplayInfo,
-        stat::NetStatData,
-    },
-    process::ProcessDisplayInfo,
-};
-use ratatui::widgets::TableState;
-
-pub struct TabsState<'a> {
-    pub titles: Vec<&'a str>,
-    pub index: usize,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FocusTab {
+    Overview,
+    Hosts,
+    Connections,
+    Processes,
 }
 
-impl<'a> TabsState<'a> {
-    pub fn new(titles: Vec<&'a str>) -> TabsState<'a> {
-        TabsState { titles, index: 0 }
-    }
-    pub fn next(&mut self) {
-        self.index = (self.index + 1) % self.titles.len();
-    }
+impl FocusTab {
+    pub const ALL: [FocusTab; 4] = [
+        FocusTab::Overview,
+        FocusTab::Hosts,
+        FocusTab::Connections,
+        FocusTab::Processes,
+    ];
 
-    pub fn previous(&mut self) {
-        if self.index > 0 {
-            self.index -= 1;
-        } else {
-            self.index = self.titles.len() - 1;
+    pub fn title(self) -> &'static str {
+        match self {
+            FocusTab::Overview => "Overview",
+            FocusTab::Hosts => "Hosts",
+            FocusTab::Connections => "Connections",
+            FocusTab::Processes => "Processes",
         }
     }
 }
 
-pub struct App<'a> {
-    pub title: &'a str,
+pub struct App {
+    pub title: String,
     pub should_pause: bool,
     pub should_quit: bool,
-    pub tabs: TabsState<'a>,
-    pub talbe_state: TableState,
+    pub show_bandwidth: bool,
+    pub selected_tab: FocusTab,
     pub netstat_data: NetStatData,
     pub remote_hosts: Vec<HostDisplayInfo>,
     pub processes: Vec<ProcessDisplayInfo>,
     pub connections: Vec<SocketDisplayInfo>,
-    pub app_protocols: Vec<ServiceDisplayInfo>,
-    pub enhanced_graphics: bool,
     pub config: AppConfig,
 }
 
-impl<'a> App<'a> {
-    pub fn new(title: &'a str, enhanced_graphics: bool, config: AppConfig) -> App<'a> {
+impl App {
+    pub fn new(title: String, config: AppConfig) -> App {
         App {
             title,
             should_pause: false,
             should_quit: false,
-            tabs: TabsState::new(vec!["Statistics", "RemoteAddresses", "Connections"]),
-            talbe_state: TableState::default(),
+            show_bandwidth: config.display.show_bandwidth,
+            selected_tab: FocusTab::Overview,
             netstat_data: NetStatData::new(),
             remote_hosts: vec![],
             processes: vec![],
             connections: vec![],
-            app_protocols: vec![],
-            enhanced_graphics: enhanced_graphics,
-            config: config,
+            config,
         }
     }
 
-    pub fn on_up(&mut self) {
-        if self.tabs.index == 0 {
-            return;
-        }
-        // Select the previous row
-        let row_count = match self.tabs.index {
-            1 => self.remote_hosts.len(),
-            2 => self.connections.len(),
-            _ => 0,
+    pub fn switch_next_tab(&mut self) {
+        let index = FocusTab::ALL
+            .iter()
+            .position(|tab| *tab == self.selected_tab)
+            .unwrap_or(0);
+        let next_index = (index + 1) % FocusTab::ALL.len();
+        self.selected_tab = FocusTab::ALL[next_index];
+    }
+
+    pub fn switch_prev_tab(&mut self) {
+        let index = FocusTab::ALL
+            .iter()
+            .position(|tab| *tab == self.selected_tab)
+            .unwrap_or(0);
+        let prev_index = if index == 0 {
+            FocusTab::ALL.len() - 1
+        } else {
+            index - 1
         };
-        let i = match self.talbe_state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    row_count - 1
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        self.talbe_state.select(Some(i));
-    }
-
-    pub fn on_down(&mut self) {
-        if self.tabs.index == 0 {
-            return;
-        }
-        // Select the next row
-        let row_count = match self.tabs.index {
-            1 => self.remote_hosts.len(),
-            2 => self.connections.len(),
-            _ => 0,
-        };
-        let i = match self.talbe_state.selected() {
-            Some(i) => {
-                if i >= row_count - 1 {
-                    0
-                } else {
-                    i + 1
-                }
-            }
-            None => 0,
-        };
-        self.talbe_state.select(Some(i));
-    }
-
-    pub fn on_right(&mut self) {
-        // Select the next tab
-        self.tabs.next();
-    }
-
-    pub fn on_left(&mut self) {
-        // Select the previous tab
-        self.tabs.previous();
-    }
-
-    pub fn on_tab(&mut self) {
-        // Select the next tab
-        self.tabs.next();
-    }
-
-    pub fn on_shift_tab(&mut self) {
-        // Select the previous tab
-        self.tabs.previous();
+        self.selected_tab = FocusTab::ALL[prev_index];
     }
 
     pub fn on_key(&mut self, c: char) {
         match c {
-            'q' => {
-                // Quit the application
-                self.should_quit = true;
-            }
-            ' ' => {
-                // Pause the application
-                self.should_pause = !self.should_pause;
-            }
-            't' => {
-                // Switch display mode (total/bandwidth)
-                self.config.display.show_bandwidth = !self.config.display.show_bandwidth;
-            }
+            'q' => self.should_quit = true,
+            ' ' => self.should_pause = !self.should_pause,
+            't' => self.show_bandwidth = !self.show_bandwidth,
             _ => {}
         }
     }
 
     pub fn on_tick(&mut self, netstat_data: NetStatData) {
-        // Update the state of the application
-        self.netstat_data.merge(
-            netstat_data,
-            Duration::from_millis(self.config.display.tick_rate),
-        );
+        let tick_rate = Duration::from_millis(self.config.display.tick_rate);
+        self.netstat_data.merge(netstat_data, tick_rate);
         self.remote_hosts = self.netstat_data.get_remote_hosts(None);
-        //self.top_processes = app.netstat_data.get_top_processes();
         self.connections = self.netstat_data.get_connections(None);
+        self.processes = self.netstat_data.get_processes(None);
     }
 }
