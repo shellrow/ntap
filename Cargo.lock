@@ -1523,9 +1523,9 @@ dependencies = [
 
 [[package]]
 name = "netsock"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9e58f2fae01a0d3809c0918aeb86db4e99b16b6ee1fbbe7e9daff8992a969cf"
+checksum = "41e6a43de4034ef4b62e99c90081a371f9050cf6e2aa1651dfa4ee87bc818574"
 dependencies = [
  "bitflags 2.11.0",
  "libproc",
