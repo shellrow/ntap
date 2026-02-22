@@ -305,7 +305,13 @@ pub fn get_sockets_info(opt: SocketInfoOption) -> Vec<SocketInfo> {
     let af_flags: AddressFamilyFlags = opt.get_address_family_flags();
     let proto_flags: ProtocolFlags = opt.get_protocol_flags();
     let sockets: Vec<netsock::socket::SocketInfo> =
-        netsock::get_sockets(af_flags, proto_flags).unwrap();
+        match netsock::get_sockets(af_flags, proto_flags) {
+            Ok(sockets) => sockets,
+            Err(e) => {
+                tracing::warn!("[get_sockets_info] failed to fetch socket list: {}", e);
+                return Vec::new();
+            }
+        };
     let mut sockets_info: Vec<SocketInfo> = Vec::new();
 
     for si in sockets {
