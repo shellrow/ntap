@@ -111,10 +111,9 @@ impl PacketCaptureOptions {
         };
         Some(options)
     }
-    pub fn from_interface_name(if_name: String) -> PacketCaptureOptions {
-        let iface = interface::get_interface_by_name(if_name).unwrap();
-
-        PacketCaptureOptions {
+    pub fn from_interface_name(if_name: String) -> Option<PacketCaptureOptions> {
+        let iface = interface::get_interface_by_name(if_name)?;
+        Some(PacketCaptureOptions {
             interface_index: iface.index,
             interface_name: iface.name.clone(),
             src_ips: HashSet::new(),
@@ -129,7 +128,7 @@ impl PacketCaptureOptions {
             receive_undefined: true,
             tunnel: iface.is_tun(),
             loopback: iface.is_loopback(),
-        }
+        })
     }
     pub fn from_interface(iface: &Interface) -> PacketCaptureOptions {
         PacketCaptureOptions {

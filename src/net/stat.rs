@@ -949,8 +949,32 @@ impl NetStatData {
     }
 
     pub fn get_app_protocols(&self, limit: Option<usize>) -> Vec<ServiceDisplayInfo> {
-        let tcp_db = crate::db::TCP_SERVICE_DB.get().unwrap().read().unwrap();
-        let udp_db = crate::db::UDP_SERVICE_DB.get().unwrap().read().unwrap();
+        let tcp_db = match crate::db::TCP_SERVICE_DB.get() {
+            Some(db) => match db.read() {
+                Ok(guard) => Some(guard),
+                Err(e) => {
+                    tracing::warn!("failed to read TCP service DB: {}", e);
+                    None
+                }
+            },
+            None => {
+                tracing::warn!("TCP service DB is not initialized");
+                None
+            }
+        };
+        let udp_db = match crate::db::UDP_SERVICE_DB.get() {
+            Some(db) => match db.read() {
+                Ok(guard) => Some(guard),
+                Err(e) => {
+                    tracing::warn!("failed to read UDP service DB: {}", e);
+                    None
+                }
+            },
+            None => {
+                tracing::warn!("UDP service DB is not initialized");
+                None
+            }
+        };
         let mut protocol_port_map: HashMap<ProtocolPort, TrafficInfo> = HashMap::new();
         self.connection_map.iter().for_each(|(conn, traffic_info)| {
             let protocol_port: ProtocolPort = ProtocolPort {
@@ -987,11 +1011,13 @@ impl NetStatData {
                     protocol: protocol_port.protocol.as_str().to_string(),
                     name: match protocol_port.protocol {
                         TransportProtocol::TCP => tcp_db
-                            .get_name(protocol_port.port)
+                            .as_ref()
+                            .and_then(|db| db.get_name(protocol_port.port))
                             .unwrap_or("Unknown TCP Service")
                             .to_string(),
                         TransportProtocol::UDP => udp_db
-                            .get_name(protocol_port.port)
+                            .as_ref()
+                            .and_then(|db| db.get_name(protocol_port.port))
                             .unwrap_or("Unknown UDP Service")
                             .to_string(),
                     },

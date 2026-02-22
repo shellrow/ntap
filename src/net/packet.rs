@@ -203,7 +203,7 @@ impl PacketStorage {
     }
 
     pub fn add_packet(&self, packet: PacketFrame) {
-        match self.storage.try_write() {
+        match self.storage.write() {
             Ok(mut storage) => {
                 // If the storage is full, remove the oldest packet
                 if storage.len() == self.max_capacity {
@@ -211,18 +211,23 @@ impl PacketStorage {
                 }
                 storage.push_back(packet);
             }
-            Err(_) => {
-                // TODO: Log error or return error
+            Err(e) => {
+                tracing::error!("failed to lock packet storage for write: {}", e);
+                let mut storage = e.into_inner();
+                if storage.len() == self.max_capacity {
+                    storage.pop_front();
+                }
+                storage.push_back(packet);
             }
         }
     }
 
     pub fn get_packets(&self) -> Vec<PacketFrame> {
-        match self.storage.try_read() {
+        match self.storage.read() {
             Ok(storage) => storage.iter().cloned().collect(),
-            Err(_) => {
-                // TODO: Log error or return error
-                Vec::new()
+            Err(e) => {
+                tracing::error!("failed to lock packet storage for read: {}", e);
+                e.into_inner().iter().cloned().collect()
             }
         }
     }
