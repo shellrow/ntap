@@ -38,23 +38,36 @@ impl TrafficInfo {
         }
     }
     pub fn add_traffic(&mut self, traffic: &TrafficInfo) {
-        self.packet_sent += traffic.packet_sent;
-        self.packet_received += traffic.packet_received;
-        self.bytes_sent += traffic.bytes_sent;
-        self.bytes_received += traffic.bytes_received;
+        self.packet_sent = self.packet_sent.saturating_add(traffic.packet_sent);
+        self.packet_received = self.packet_received.saturating_add(traffic.packet_received);
+        self.bytes_sent = self.bytes_sent.saturating_add(traffic.bytes_sent);
+        self.bytes_received = self.bytes_received.saturating_add(traffic.bytes_received);
+        self.last_seen = SystemTime::now();
+    }
+    pub fn record(&mut self, direction: Direction, bytes: usize) {
+        match direction {
+            Direction::Egress => {
+                self.packet_sent = self.packet_sent.saturating_add(1);
+                self.bytes_sent = self.bytes_sent.saturating_add(bytes);
+            }
+            Direction::Ingress => {
+                self.packet_received = self.packet_received.saturating_add(1);
+                self.bytes_received = self.bytes_received.saturating_add(bytes);
+            }
+        }
         self.last_seen = SystemTime::now();
     }
     pub fn update_egress_packets_per_sec(&mut self, sent_packets: usize, duration: Duration) {
-        self.egress_packets_per_sec = (sent_packets as f64 / duration.as_secs_f64()) as usize;
+        self.egress_packets_per_sec = rate_per_second(sent_packets, duration);
     }
     pub fn update_egress_bytes_per_sec(&mut self, sent_bytes: usize, duration: Duration) {
-        self.egress_bytes_per_sec = (sent_bytes as f64 / duration.as_secs_f64()) as usize;
+        self.egress_bytes_per_sec = rate_per_second(sent_bytes, duration);
     }
     pub fn update_ingress_packets_per_sec(&mut self, received_packets: usize, duration: Duration) {
-        self.ingress_packets_per_sec = (received_packets as f64 / duration.as_secs_f64()) as usize;
+        self.ingress_packets_per_sec = rate_per_second(received_packets, duration);
     }
     pub fn update_ingress_bytes_per_sec(&mut self, received_bytes: usize, duration: Duration) {
-        self.ingress_bytes_per_sec = (received_bytes as f64 / duration.as_secs_f64()) as usize;
+        self.ingress_bytes_per_sec = rate_per_second(received_bytes, duration);
     }
     pub fn update_bytes_per_sec(&mut self, traffic: &TrafficInfo, duration: Duration) {
         self.update_egress_packets_per_sec(traffic.packet_sent, duration);
@@ -62,11 +75,8 @@ impl TrafficInfo {
         self.update_egress_bytes_per_sec(traffic.bytes_sent, duration);
         self.update_ingress_bytes_per_sec(traffic.bytes_received, duration);
     }
-    pub fn total_packet(&self) -> usize {
-        self.packet_sent + self.packet_received
-    }
     pub fn total_bytes(&self) -> usize {
-        self.bytes_sent + self.bytes_received
+        self.bytes_sent.saturating_add(self.bytes_received)
     }
     pub fn format_bytes(bytes: usize) -> String {
         const KB: usize = 1024;
@@ -84,25 +94,16 @@ impl TrafficInfo {
         }
     }
     pub fn format_packets(packets: usize) -> String {
-        if packets >= 1000 {
-            format!("{:.2} Kp", packets as f64 / 1000.0)
-        } else if packets >= 1000000 {
+        if packets >= 1_000_000 {
             format!("{:.2} Mp", packets as f64 / 1000000.0)
+        } else if packets >= 1_000 {
+            format!("{:.2} Kp", packets as f64 / 1000.0)
         } else {
             format!("{} p", packets)
         }
     }
     pub fn formatted_total_bytes(&self) -> String {
         Self::format_bytes(self.total_bytes())
-    }
-    pub fn formatted_total_packets(&self) -> String {
-        Self::format_packets(self.total_packet())
-    }
-    pub fn formatted_packet_sent(&self) -> String {
-        Self::format_packets(self.packet_sent)
-    }
-    pub fn formatted_packet_received(&self) -> String {
-        Self::format_packets(self.packet_received)
     }
     pub fn formatted_sent_bytes(&self) -> String {
         Self::format_bytes(self.bytes_sent)
@@ -127,6 +128,42 @@ impl TrafficInfo {
     }
 }
 
+fn rate_per_second(value: usize, duration: Duration) -> usize {
+    let seconds = duration.as_secs_f64();
+    if seconds <= f64::EPSILON {
+        0
+    } else {
+        (value as f64 / seconds) as usize
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn formats_packet_magnitudes_in_the_correct_order() {
+        assert_eq!(TrafficInfo::format_packets(999), "999 p");
+        assert_eq!(TrafficInfo::format_packets(1_000), "1.00 Kp");
+        assert_eq!(TrafficInfo::format_packets(1_000_000), "1.00 Mp");
+    }
+
+    #[test]
+    fn zero_duration_produces_a_zero_rate() {
+        assert_eq!(rate_per_second(42, Duration::ZERO), 0);
+    }
+
+    #[test]
+    fn recording_traffic_updates_counts_bytes_and_time() {
+        let mut traffic = TrafficInfo::new();
+        let previous = traffic.last_seen;
+        traffic.record(Direction::Ingress, 1_500);
+        assert_eq!(traffic.packet_received, 1);
+        assert_eq!(traffic.bytes_received, 1_500);
+        assert!(traffic.last_seen >= previous);
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TrafficDisplayInfo {
     pub packet_sent: usize,
@@ -147,25 +184,6 @@ pub struct TrafficDisplayInfo {
 }
 
 impl TrafficDisplayInfo {
-    pub fn new() -> Self {
-        TrafficDisplayInfo {
-            packet_sent: 0,
-            packet_received: 0,
-            bytes_sent: 0,
-            bytes_received: 0,
-            egress_packets_per_sec: 0,
-            ingress_packets_per_sec: 0,
-            egress_bytes_per_sec: 0,
-            ingress_bytes_per_sec: 0,
-            formatted_sent_bytes: String::new(),
-            formatted_received_bytes: String::new(),
-            formatted_total_bytes: String::new(),
-            formatted_egress_packets_per_sec: String::new(),
-            formatted_ingress_packets_per_sec: String::new(),
-            formatted_egress_bytes_per_sec: String::new(),
-            formatted_ingress_bytes_per_sec: String::new(),
-        }
-    }
     pub fn from_traffic(traffic: &TrafficInfo) -> Self {
         TrafficDisplayInfo {
             packet_sent: traffic.packet_sent,

@@ -1,6 +1,4 @@
 mod config;
-mod db;
-mod deps;
 mod handler;
 mod log;
 mod net;
@@ -10,7 +8,7 @@ mod tui;
 mod util;
 
 use anyhow::Result;
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 use std::net::IpAddr;
 
 #[derive(Debug, Parser)]
@@ -20,146 +18,110 @@ use std::net::IpAddr;
     about = clap::crate_description!()
 )]
 struct Cli {
+    /// Capture only these comma-separated interface names.
     #[arg(
         short = 'i',
         long = "interfaces",
         value_delimiter = ',',
-        value_name = "interfaces"
+        value_name = "interfaces",
+        global = true
     )]
     interfaces: Vec<String>,
+    /// Capture only these comma-separated protocol names.
     #[arg(
         short = 'P',
         long = "protocols",
         value_delimiter = ',',
-        value_name = "protocols"
+        value_name = "protocols",
+        value_parser = ["arp", "rarp", "aarp", "ipv4", "ipv6", "vlan", "mpls", "wakeonlan", "rldp", "lldp", "icmp", "icmpv6", "tcp", "udp"],
+        ignore_case = true,
+        global = true
     )]
     protocols: Vec<String>,
-    #[arg(short = 'a', long = "ips", value_delimiter = ',', value_name = "ips")]
+    /// Capture packets where either endpoint matches one of these IP addresses.
+    #[arg(
+        short = 'a',
+        long = "ips",
+        value_delimiter = ',',
+        value_name = "ips",
+        global = true
+    )]
     ips: Vec<IpAddr>,
+    /// Capture packets where either endpoint matches one of these ports.
     #[arg(
         short = 'p',
         long = "ports",
         value_delimiter = ',',
-        value_name = "ports"
+        value_name = "ports",
+        global = true
     )]
     ports: Vec<u16>,
-    #[arg(short = 'r', long = "tickrate", value_name = "duration_ms")]
+    /// Set the UI refresh period in milliseconds.
+    #[arg(
+        short = 'r',
+        long = "tickrate",
+        value_name = "duration_ms",
+        value_parser = clap::value_parser!(u64).range(16..=60_000),
+        global = true
+    )]
     tickrate: Option<u64>,
-    #[arg(long = "enhanced-graphics", action = ArgAction::SetTrue)]
-    enhanced_graphics: bool,
     #[command(subcommand)]
     command: Option<Command>,
 }
 
+fn parse_nonzero_usize(value: &str) -> Result<usize, String> {
+    let value = value
+        .parse::<usize>()
+        .map_err(|error| format!("invalid positive integer: {error}"))?;
+    if value == 0 {
+        Err("value must be greater than zero".to_string())
+    } else {
+        Ok(value)
+    }
+}
+
 #[derive(Debug, Subcommand)]
 enum Command {
-    Monitor(MonitorArgs),
+    /// Start the network traffic monitor.
+    Monitor,
+    /// Inspect captured packets and payload previews.
     Live(LiveArgs),
+    /// List all network interfaces.
     Interfaces,
+    /// Show the default network interface.
     Interface,
 }
 
 #[derive(Debug, Parser, Default)]
-struct MonitorArgs {
-    #[arg(
-        short = 'i',
-        long = "interfaces",
-        value_delimiter = ',',
-        value_name = "interfaces"
-    )]
-    interfaces: Vec<String>,
-    #[arg(
-        short = 'P',
-        long = "protocols",
-        value_delimiter = ',',
-        value_name = "protocols"
-    )]
-    protocols: Vec<String>,
-    #[arg(short = 'a', long = "ips", value_delimiter = ',', value_name = "ips")]
-    ips: Vec<IpAddr>,
-    #[arg(
-        short = 'p',
-        long = "ports",
-        value_delimiter = ',',
-        value_name = "ports"
-    )]
-    ports: Vec<u16>,
-}
-
-#[derive(Debug, Parser, Default)]
 struct LiveArgs {
+    /// Retain at most this many packet records in memory.
     #[arg(
-        short = 'i',
-        long = "interfaces",
-        value_delimiter = ',',
-        value_name = "interfaces"
+        short = 'l',
+        long = "limit",
+        value_name = "count",
+        value_parser = parse_nonzero_usize
     )]
-    interfaces: Vec<String>,
-    #[arg(
-        short = 'P',
-        long = "protocols",
-        value_delimiter = ',',
-        value_name = "protocols"
-    )]
-    protocols: Vec<String>,
-    #[arg(short = 'a', long = "ips", value_delimiter = ',', value_name = "ips")]
-    ips: Vec<IpAddr>,
-    #[arg(
-        short = 'p',
-        long = "ports",
-        value_delimiter = ',',
-        value_name = "ports"
-    )]
-    ports: Vec<u16>,
-    #[arg(short = 'l', long = "limit", value_name = "count")]
     limit: Option<usize>,
 }
 
-fn to_monitor_options(cli: &Cli, cmd: Option<&MonitorArgs>) -> handler::monitor::MonitorOptions {
-    let interfaces = cmd
-        .map(|c| c.interfaces.clone())
-        .unwrap_or_else(|| cli.interfaces.clone());
-    let protocols = cmd
-        .map(|c| c.protocols.clone())
-        .unwrap_or_else(|| cli.protocols.clone());
-    let ips = cmd
-        .map(|c| c.ips.clone())
-        .unwrap_or_else(|| cli.ips.clone());
-    let ports = cmd
-        .map(|c| c.ports.clone())
-        .unwrap_or_else(|| cli.ports.clone());
+fn to_monitor_options(cli: &Cli) -> handler::monitor::MonitorOptions {
     handler::monitor::MonitorOptions {
-        interfaces,
-        protocols,
-        ips,
-        ports,
+        interfaces: cli.interfaces.clone(),
+        protocols: cli.protocols.clone(),
+        ips: cli.ips.clone(),
+        ports: cli.ports.clone(),
         tickrate: cli.tickrate,
-        enhanced_graphics: cli.enhanced_graphics,
     }
 }
 
-fn to_live_options(cli: &Cli, cmd: Option<&LiveArgs>) -> handler::live::LiveOptions {
-    let interfaces = cmd
-        .map(|c| c.interfaces.clone())
-        .unwrap_or_else(|| cli.interfaces.clone());
-    let protocols = cmd
-        .map(|c| c.protocols.clone())
-        .unwrap_or_else(|| cli.protocols.clone());
-    let ips = cmd
-        .map(|c| c.ips.clone())
-        .unwrap_or_else(|| cli.ips.clone());
-    let ports = cmd
-        .map(|c| c.ports.clone())
-        .unwrap_or_else(|| cli.ports.clone());
-    let limit = cmd.and_then(|c| c.limit);
+fn to_live_options(cli: &Cli, cmd: &LiveArgs) -> handler::live::LiveOptions {
     handler::live::LiveOptions {
-        interfaces,
-        protocols,
-        ips,
-        ports,
+        interfaces: cli.interfaces.clone(),
+        protocols: cli.protocols.clone(),
+        ips: cli.ips.clone(),
+        ports: cli.ports.clone(),
         tickrate: cli.tickrate,
-        enhanced_graphics: cli.enhanced_graphics,
-        limit,
+        limit: cmd.limit,
     }
 }
 
@@ -167,14 +129,30 @@ fn to_live_options(cli: &Cli, cmd: Option<&LiveArgs>) -> handler::live::LiveOpti
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     match &cli.command {
-        Some(Command::Monitor(args)) => {
-            handler::monitor::monitor(to_monitor_options(&cli, Some(args))).await
-        }
-        Some(Command::Live(args)) => {
-            handler::live::live_capture(to_live_options(&cli, Some(args))).await
-        }
+        Some(Command::Monitor) => handler::monitor::monitor(to_monitor_options(&cli)).await,
+        Some(Command::Live(args)) => handler::live::live_capture(to_live_options(&cli, args)).await,
         Some(Command::Interfaces) => handler::interface::show_interfaces(),
         Some(Command::Interface) => handler::interface::show_default_interface(),
-        None => handler::monitor::monitor(to_monitor_options(&cli, None)).await,
+        None => handler::monitor::monitor(to_monitor_options(&cli)).await,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn global_filters_are_accepted_around_subcommands() {
+        let before = Cli::try_parse_from(["ntap", "-P", "tcp", "monitor"]);
+        let after = Cli::try_parse_from(["ntap", "monitor", "-P", "udp"]);
+        assert_eq!(before.unwrap().protocols, ["tcp"]);
+        assert_eq!(after.unwrap().protocols, ["udp"]);
+    }
+
+    #[test]
+    fn invalid_runtime_limits_are_rejected() {
+        assert!(Cli::try_parse_from(["ntap", "--tickrate", "0"]).is_err());
+        assert!(Cli::try_parse_from(["ntap", "live", "--limit", "0"]).is_err());
+        assert!(Cli::try_parse_from(["ntap", "-P", "not-a-protocol"]).is_err());
     }
 }

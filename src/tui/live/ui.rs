@@ -1,6 +1,5 @@
 use super::app::App;
 use nex::packet::dns::DnsPacket;
-use nex::packet::packet::Packet;
 use nex::packet::tcp::TcpFlags;
 use ratatui::{prelude::*, widgets::*};
 
@@ -131,10 +130,10 @@ fn packet_info(packet: &crate::net::packet::PacketFrame) -> String {
             return format!("IPv6 hop_limit={}", ipv6.hop_limit);
         }
     }
-    if let Some(datalink) = &packet.datalink {
-        if datalink.arp.is_some() {
-            return "ARP".to_string();
-        }
+    if let Some(datalink) = &packet.datalink
+        && datalink.arp.is_some()
+    {
+        return "ARP".to_string();
     }
     String::new()
 }
@@ -173,11 +172,11 @@ fn http_host(payload: &[u8]) -> Option<String> {
 }
 
 fn dns_hint(payload: bytes::Bytes) -> Option<String> {
-    let dns = DnsPacket::from_buf(&payload)?;
-    if let Some(query) = dns.queries.first() {
-        if let Ok(name) = query.get_qname_parsed() {
-            return Some(format!("DNS query {}", name));
-        }
+    let dns = DnsPacket::try_from_buf(&payload).ok()?;
+    if let Some(query) = dns.queries.first()
+        && let Ok(name) = query.qname_parsed()
+    {
+        return Some(format!("DNS query {}", name));
     }
     if !dns.responses.is_empty() {
         return Some(format!("DNS response {} record(s)", dns.responses.len()));
@@ -187,37 +186,35 @@ fn dns_hint(payload: bytes::Bytes) -> Option<String> {
 
 fn packet_app_hint(packet: &crate::net::packet::PacketFrame) -> String {
     if let Some(transport) = &packet.transport {
-        if let Some(udp) = &transport.udp {
-            if udp.source == 53 || udp.destination == 53 {
-                if let Some(hint) = dns_hint(packet.payload.clone()) {
-                    return hint;
-                }
-            }
+        if let Some(udp) = &transport.udp
+            && (udp.source == 53 || udp.destination == 53)
+            && let Some(hint) = dns_hint(packet.payload.clone())
+        {
+            return hint;
         }
         if let Some(tcp) = &transport.tcp {
             let payload = packet.payload.as_ref();
             if payload.is_empty() {
                 return String::new();
             }
-            if tcp.source == 53 || tcp.destination == 53 {
-                if let Some(hint) = dns_hint(packet.payload.clone()) {
-                    return hint;
-                }
+            if (tcp.source == 53 || tcp.destination == 53)
+                && let Some(hint) = dns_hint(packet.payload.clone())
+            {
+                return hint;
             }
             if (tcp.source == 443 || tcp.destination == 443) && is_tls_client_hello(payload) {
                 return "TLS ClientHello".to_string();
             }
-            if tcp.source == 80
+            if (tcp.source == 80
                 || tcp.destination == 80
                 || tcp.source == 8080
-                || tcp.destination == 8080
+                || tcp.destination == 8080)
+                && let Some(line) = first_http_line(payload)
             {
-                if let Some(line) = first_http_line(payload) {
-                    if let Some(host) = http_host(payload) {
-                        return format!("HTTP {} host={}", line, host);
-                    }
-                    return format!("HTTP {}", line);
+                if let Some(host) = http_host(payload) {
+                    return format!("HTTP {} host={}", line, host);
                 }
+                return format!("HTTP {}", line);
             }
         }
     }
@@ -243,7 +240,7 @@ fn payload_hex_preview(payload: &[u8], max_len: usize) -> String {
 }
 
 fn selected_packet<'a>(app: &'a App) -> Option<&'a crate::net::packet::PacketFrame> {
-    app.talbe_state
+    app.table_state
         .selected()
         .and_then(|idx| app.packets.get(idx))
         .or_else(|| app.packets.last())
@@ -304,7 +301,7 @@ fn draw_packet_table(f: &mut Frame, app: &mut App, area: Rect) {
         .highlight_symbol(">>");
 
     //f.render_widget(table, area);
-    f.render_stateful_widget(table, area, &mut app.talbe_state);
+    f.render_stateful_widget(table, area, &mut app.table_state);
 }
 
 fn draw_packet_detail(f: &mut Frame, app: &App, area: Rect) {

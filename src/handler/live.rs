@@ -5,9 +5,10 @@ use nex::packet::ethernet::EtherType;
 use nex::packet::ip::IpNextProtocol;
 use std::collections::HashSet;
 use std::net::IpAddr;
-use std::sync::Arc;
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::{Receiver, SyncSender, channel, sync_channel};
+use std::sync::{Arc, atomic::AtomicBool};
 use std::thread;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Default)]
 pub struct LiveOptions {
@@ -16,7 +17,6 @@ pub struct LiveOptions {
     pub ips: Vec<IpAddr>,
     pub ports: Vec<u16>,
     pub tickrate: Option<u64>,
-    pub enhanced_graphics: bool,
     pub limit: Option<usize>,
 }
 
@@ -25,9 +25,9 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
         anyhow::bail!("Could not get config directory path");
     }
 
-    crate::sys::check_deps().map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    crate::sys::check_deps()?;
 
-    let mut config = AppConfig::load();
+    let mut config = AppConfig::load()?;
     crate::log::init_logger(&config)?;
 
     if let Some(tick_rate) = opts.tickrate {
@@ -36,6 +36,7 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
     if !opts.interfaces.is_empty() {
         config.network.interfaces = opts.interfaces.clone();
     }
+    config.validate()?;
 
     let mut ethertypes: HashSet<EtherType> = HashSet::new();
     let mut ip_next_protocols: HashSet<IpNextProtocol> = HashSet::new();
@@ -62,20 +63,23 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
     }
 
     let storage_capacity = opts.limit.unwrap_or(u8::MAX as usize);
-    let packet_strage: Arc<PacketStorage> =
+    let packet_storage: Arc<PacketStorage> =
         Arc::new(PacketStorage::with_capacity(storage_capacity));
-    let packet_strage_ui: Arc<PacketStorage> = Arc::clone(&packet_strage);
-    let target_interfaces = if config.network.interfaces.is_empty() {
-        crate::net::interface::get_usable_interfaces()
-    } else {
-        crate::net::interface::get_interfaces_by_name(&config.network.interfaces)
-    };
+    let packet_storage_ui: Arc<PacketStorage> = Arc::clone(&packet_storage);
+    let target_interfaces =
+        crate::net::interface::resolve_capture_interfaces(&config.network.interfaces)?;
 
-    let (tx, rx): (Sender<PacketFrame>, Receiver<PacketFrame>) = channel();
+    const CAPTURE_QUEUE_CAPACITY: usize = 4096;
+    let (tx, rx): (SyncSender<PacketFrame>, Receiver<PacketFrame>) =
+        sync_channel(CAPTURE_QUEUE_CAPACITY);
+    let dropped_packets = Arc::new(std::sync::atomic::AtomicUsize::new(0));
 
+    let stop = Arc::new(AtomicBool::new(false));
+    let mut capture_workers = crate::util::WorkerSet::new(Arc::clone(&stop));
+    let (ready_tx, ready_rx) = channel();
     for iface in target_interfaces {
         let iface = iface.clone();
-        let mut pcap_option = crate::net::pcap::PacketCaptureOptions::from_interface(&iface);
+        let mut pcap_option = crate::net::pcap::PacketCaptureOptions::new();
         pcap_option.ether_types = ethertypes.clone();
         pcap_option.ip_protocols = ip_next_protocols.clone();
         pcap_option.src_ips = ips.clone();
@@ -83,22 +87,54 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
         pcap_option.dst_ips = ips.clone();
         pcap_option.dst_ports = ports.clone();
         let tx_clone = tx.clone();
-        thread::Builder::new()
-            .name(format!("live-pcap-{}", iface.name))
-            .spawn(move || {
-                crate::net::pcap::start_live_capture(pcap_option, tx_clone, iface);
-            })?;
+        let capture_stop = Arc::clone(&stop);
+        let dropped_packets = Arc::clone(&dropped_packets);
+        let ready_tx = ready_tx.clone();
+        capture_workers.spawn(format!("live-pcap-{}", iface.name), move || {
+            crate::net::pcap::start_live_capture(
+                pcap_option,
+                tx_clone,
+                iface,
+                &capture_stop,
+                &dropped_packets,
+                ready_tx,
+            );
+        })?;
+    }
+    drop(ready_tx);
+    let mut startup_error = None;
+    for _ in 0..capture_workers.worker_count() {
+        match ready_rx.recv_timeout(Duration::from_secs(5)) {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => {
+                startup_error = Some(error);
+                break;
+            }
+            Err(error) => {
+                startup_error = Some(format!("capture startup did not complete: {error}"));
+                break;
+            }
+        }
+    }
+    if let Some(error) = startup_error {
+        capture_workers.shutdown();
+        anyhow::bail!(error);
     }
 
-    thread::Builder::new()
+    let receiver_worker = thread::Builder::new()
         .name("live-packet-receiver".to_string())
         .spawn(move || {
             while let Ok(mut frame) = rx.recv() {
-                frame.capture_no = packet_strage.generate_capture_no();
-                packet_strage.add_packet(frame);
+                frame.capture_no = packet_storage.generate_capture_no();
+                packet_storage.add_packet(frame);
             }
         })?;
 
-    crate::tui::live::terminal::run(config, opts.enhanced_graphics, &packet_strage_ui).await?;
-    Ok(())
+    let result = crate::tui::live::terminal::run(config, &packet_storage_ui).await;
+    capture_workers.shutdown();
+    drop(tx);
+    if receiver_worker.join().is_err() {
+        tracing::error!("the packet receiver thread panicked during shutdown");
+    }
+    result
 }

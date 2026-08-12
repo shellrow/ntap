@@ -1,11 +1,10 @@
-use crate::net::stat::NetStatStrage;
-use crate::net::traffic::{TrafficDisplayInfo, TrafficInfo};
+use crate::net::stat::NetStatStorage;
+use crate::net::traffic::TrafficDisplayInfo;
 use crate::process::ProcessInfo;
 use netsock::family::AddressFamilyFlags;
 use netsock::protocol::ProtocolFlags;
 use netsock::socket::ProtocolSocketInfo;
 use netsock::state::TcpState;
-use nex::packet::tcp::TcpFlags;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -54,22 +53,6 @@ impl SocketStatus {
             TcpState::TimeWait => SocketStatus::TimeWait,
             TcpState::DeleteTcb => SocketStatus::DeleteTcb,
             _ => SocketStatus::Unknown,
-        }
-    }
-    pub fn from_xenet_tcp_flags(flags: u8) -> Self {
-        // match is cause unreachable pattern. so use if-else.
-        if flags == TcpFlags::SYN {
-            SocketStatus::SynSent
-        } else if flags == TcpFlags::SYN | TcpFlags::ACK {
-            SocketStatus::SynReceived
-        } else if flags == TcpFlags::ACK {
-            SocketStatus::Established
-        } else if flags == TcpFlags::FIN | TcpFlags::ACK {
-            SocketStatus::Closing
-        } else if flags == TcpFlags::FIN {
-            SocketStatus::FinWait1
-        } else {
-            SocketStatus::Unknown
         }
     }
 }
@@ -136,19 +119,6 @@ pub struct SocketInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SocketTrafficInfo {
-    pub interface_name: String,
-    pub local_ip_addr: IpAddr,
-    pub local_port: u16,
-    pub remote_ip_addr: Option<IpAddr>,
-    pub remote_port: Option<u16>,
-    pub protocol: TransportProtocol,
-    pub ip_version: AddressFamily,
-    pub process: Option<ProcessInfo>,
-    pub traffic: TrafficInfo,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SocketDisplayInfo {
     pub interface_name: String,
     pub local_ip_addr: IpAddr,
@@ -159,22 +129,6 @@ pub struct SocketDisplayInfo {
     pub ip_version: AddressFamily,
     pub process: Option<ProcessInfo>,
     pub traffic: TrafficDisplayInfo,
-}
-
-impl SocketDisplayInfo {
-    pub fn from_socket_traffic_info(socket_traffic_info: &SocketTrafficInfo) -> Self {
-        SocketDisplayInfo {
-            interface_name: socket_traffic_info.interface_name.clone(),
-            local_ip_addr: socket_traffic_info.local_ip_addr,
-            local_port: socket_traffic_info.local_port,
-            remote_ip_addr: socket_traffic_info.remote_ip_addr,
-            remote_port: socket_traffic_info.remote_port,
-            protocol: socket_traffic_info.protocol,
-            ip_version: socket_traffic_info.ip_version.clone(),
-            process: socket_traffic_info.process.clone(),
-            traffic: socket_traffic_info.traffic.to_display_info(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -199,12 +153,6 @@ impl TransportProtocol {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord, Copy)]
-pub struct ProtocolSocketAddress {
-    pub socket: SocketAddr,
-    pub protocol: TransportProtocol,
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord)]
 pub struct LocalSocket {
     pub interface_name: String,
@@ -219,30 +167,6 @@ impl LocalSocket {
             port,
             protocol,
         }
-    }
-    pub fn to_key_string(&self) -> String {
-        format!(
-            "{}-{}-{}",
-            self.interface_name,
-            self.port,
-            self.protocol.as_str()
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord, Copy)]
-pub struct ProtocolPort {
-    pub port: u16,
-    pub protocol: TransportProtocol,
-}
-
-impl ProtocolPort {
-    pub fn new(port: u16, protocol: TransportProtocol) -> Self {
-        ProtocolPort { port, protocol }
-    }
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_key_string(&self) -> String {
-        format!("{}-{}", self.port, self.protocol.as_str())
     }
 }
 
@@ -262,15 +186,6 @@ impl Default for SocketInfoOption {
 }
 
 impl SocketInfoOption {
-    pub fn new(
-        address_family: Vec<AddressFamily>,
-        transport_protocol: Vec<TransportProtocol>,
-    ) -> SocketInfoOption {
-        SocketInfoOption {
-            address_family,
-            transport_protocol,
-        }
-    }
     pub fn get_address_family_flags(&self) -> AddressFamilyFlags {
         let mut flags: AddressFamilyFlags = AddressFamilyFlags::empty();
         for af in &self.address_family {
@@ -367,11 +282,17 @@ pub fn get_sockets_info(opt: SocketInfoOption) -> Vec<SocketInfo> {
     sockets_info
 }
 
-pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
+pub fn start_socket_info_update(
+    netstat_storage: &mut Arc<NetStatStorage>,
+    stop: &std::sync::atomic::AtomicBool,
+) {
     let mut local_ip_map: HashMap<IpAddr, String> = HashMap::new();
     loop {
+        if stop.load(std::sync::atomic::Ordering::Acquire) {
+            break;
+        }
         if local_ip_map.is_empty() {
-            local_ip_map = netstat_strage.get_local_ip_map();
+            local_ip_map = netstat_storage.get_local_ip_map();
         }
         let sockets_info = get_sockets_info(SocketInfoOption::default());
         // Create Vec<LocalSocket>
@@ -386,11 +307,13 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
             }
         }
         // Lock the local_socket_map
-        let mut local_socket_inner = match netstat_strage.local_socket_map.try_lock() {
+        let mut local_socket_inner = match netstat_storage.local_socket_map.try_lock() {
             Ok(connections) => connections,
             Err(e) => {
                 tracing::error!("[socket_info_update] lock error: {}", e);
-                std::thread::sleep(std::time::Duration::from_millis(25));
+                if crate::util::wait_for_stop(stop, std::time::Duration::from_millis(25)) {
+                    break;
+                }
                 continue;
             }
         };
@@ -421,6 +344,8 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
         }
         // Drop the lock
         drop(local_socket_inner);
-        std::thread::sleep(std::time::Duration::from_secs(10));
+        if crate::util::wait_for_stop(stop, std::time::Duration::from_secs(10)) {
+            break;
+        }
     }
 }

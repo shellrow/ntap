@@ -38,6 +38,8 @@ pub struct App {
     pub show_bandwidth: bool,
     pub selected_tab: FocusTab,
     pub netstat_data: NetStatData,
+    pending_data: NetStatData,
+    pending_duration: Duration,
     pub remote_hosts: Vec<HostDisplayInfo>,
     pub processes: Vec<ProcessDisplayInfo>,
     pub connections: Vec<SocketDisplayInfo>,
@@ -53,6 +55,8 @@ impl App {
             show_bandwidth: config.display.show_bandwidth,
             selected_tab: FocusTab::Overview,
             netstat_data: NetStatData::new(),
+            pending_data: NetStatData::new(),
+            pending_duration: Duration::ZERO,
             remote_hosts: vec![],
             processes: vec![],
             connections: vec![],
@@ -93,9 +97,27 @@ impl App {
 
     pub fn on_tick(&mut self, netstat_data: NetStatData) {
         let tick_rate = Duration::from_millis(self.config.display.tick_rate);
+        if self.should_pause {
+            self.pending_data.merge(netstat_data, tick_rate);
+            self.pending_duration = self.pending_duration.saturating_add(tick_rate);
+            return;
+        }
+        if !self.pending_duration.is_zero() {
+            self.netstat_data.merge(
+                std::mem::replace(&mut self.pending_data, NetStatData::new()),
+                self.pending_duration,
+            );
+            self.pending_duration = Duration::ZERO;
+        }
         self.netstat_data.merge(netstat_data, tick_rate);
-        self.remote_hosts = self.netstat_data.get_remote_hosts(None);
-        self.connections = self.netstat_data.get_connections(None);
-        self.processes = self.netstat_data.get_processes(None);
+        self.remote_hosts = self
+            .netstat_data
+            .get_remote_hosts(Some(self.config.display.top_remote_hosts));
+        self.connections = self
+            .netstat_data
+            .get_connections(Some(self.config.display.connection_count));
+        self.processes = self
+            .netstat_data
+            .get_processes(Some(self.config.display.connection_count));
     }
 }

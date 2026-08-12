@@ -1,18 +1,4 @@
-#![allow(unused)]
-
-use std::time::Duration;
-
-use crate::{
-    config::AppConfig,
-    net::{
-        host::HostDisplayInfo,
-        packet::{PacketFrame, PacketStorage},
-        service::ServiceDisplayInfo,
-        socket::SocketDisplayInfo,
-        stat::NetStatData,
-    },
-    process::ProcessDisplayInfo,
-};
+use crate::{config::AppConfig, net::packet::PacketFrame};
 use ratatui::widgets::TableState;
 
 pub struct TabsState<'a> {
@@ -24,17 +10,6 @@ impl<'a> TabsState<'a> {
     pub fn new(titles: Vec<&'a str>) -> TabsState<'a> {
         TabsState { titles, index: 0 }
     }
-    pub fn next(&mut self) {
-        self.index = (self.index + 1) % self.titles.len();
-    }
-
-    pub fn previous(&mut self) {
-        if self.index > 0 {
-            self.index -= 1;
-        } else {
-            self.index = self.titles.len() - 1;
-        }
-    }
 }
 
 pub struct App<'a> {
@@ -42,24 +17,22 @@ pub struct App<'a> {
     pub should_pause: bool,
     pub should_quit: bool,
     pub tabs: TabsState<'a>,
-    pub talbe_state: TableState,
+    pub table_state: TableState,
     pub row_selecting: bool,
     pub packets: Vec<PacketFrame>,
-    pub enhanced_graphics: bool,
     pub config: AppConfig,
 }
 
 impl<'a> App<'a> {
-    pub fn new(title: &'a str, enhanced_graphics: bool, config: AppConfig) -> App<'a> {
+    pub fn new(title: &'a str, config: AppConfig) -> App<'a> {
         App {
             title,
             should_pause: false,
             should_quit: false,
             tabs: TabsState::new(vec!["PacketCapture"]),
-            talbe_state: TableState::default(),
+            table_state: TableState::default(),
             row_selecting: false,
             packets: Vec::new(),
-            enhanced_graphics,
             config,
         }
     }
@@ -69,10 +42,10 @@ impl<'a> App<'a> {
         self.row_selecting = true;
         let row_count = self.packets.len();
         if row_count == 0 {
-            self.talbe_state.select(None);
+            self.table_state.select(None);
             return;
         }
-        let i = match self.talbe_state.selected() {
+        let i = match self.table_state.selected() {
             Some(i) => {
                 if i == 0 {
                     row_count - 1
@@ -82,7 +55,7 @@ impl<'a> App<'a> {
             }
             None => 0,
         };
-        self.talbe_state.select(Some(i));
+        self.table_state.select(Some(i));
     }
 
     pub fn on_down(&mut self) {
@@ -90,10 +63,10 @@ impl<'a> App<'a> {
         self.row_selecting = true;
         let row_count = self.packets.len();
         if row_count == 0 {
-            self.talbe_state.select(None);
+            self.table_state.select(None);
             return;
         }
-        let i = match self.talbe_state.selected() {
+        let i = match self.table_state.selected() {
             Some(i) => {
                 if i >= row_count - 1 {
                     0
@@ -103,27 +76,7 @@ impl<'a> App<'a> {
             }
             None => 0,
         };
-        self.talbe_state.select(Some(i));
-    }
-
-    pub fn on_right(&mut self) {
-        // Select the next tab
-        self.tabs.next();
-    }
-
-    pub fn on_left(&mut self) {
-        // Select the previous tab
-        self.tabs.previous();
-    }
-
-    pub fn on_tab(&mut self) {
-        // Select the next tab
-        self.tabs.next();
-    }
-
-    pub fn on_shift_tab(&mut self) {
-        // Select the previous tab
-        self.tabs.previous();
+        self.table_state.select(Some(i));
     }
 
     pub fn on_key(&mut self, c: char) {
@@ -139,9 +92,9 @@ impl<'a> App<'a> {
             'b' => {
                 // Scroll to the bottom
                 if self.packets.is_empty() {
-                    self.talbe_state.select(None);
+                    self.table_state.select(None);
                 } else {
-                    self.talbe_state.select(Some(self.packets.len() - 1));
+                    self.table_state.select(Some(self.packets.len() - 1));
                 }
                 self.row_selecting = false;
             }
@@ -155,9 +108,9 @@ impl<'a> App<'a> {
         self.packets = packets;
         // If the user is not selecting a row, scroll to the bottom
         if !self.row_selecting && !self.packets.is_empty() {
-            self.talbe_state.select(Some(self.packets.len() - 1));
+            self.table_state.select(Some(self.packets.len() - 1));
         } else if self.packets.is_empty() {
-            self.talbe_state.select(None);
+            self.table_state.select(None);
         }
     }
 }

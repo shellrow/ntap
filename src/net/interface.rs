@@ -1,175 +1,68 @@
-use netdev::MacAddr;
+use anyhow::{Result, bail};
 use nex::net::interface::Interface;
 use std::{
     collections::{HashMap, HashSet},
-    net::{IpAddr, Ipv4Addr, Ipv6Addr},
+    net::IpAddr,
 };
 
-pub fn get_interface_by_ip(ip_addr: IpAddr) -> Option<Interface> {
-    for iface in nex::net::interface::get_interfaces() {
-        for ip in iface.ipv4.clone() {
-            if ip.addr() == ip_addr {
-                return Some(iface);
-            }
-        }
-        for ip in iface.ipv6.clone() {
-            if ip.addr() == ip_addr {
-                return Some(iface);
-            }
-        }
-    }
-    None
-}
-
-pub fn get_interface_by_index(index: u32) -> Option<Interface> {
-    nex::net::interface::get_interfaces()
-        .into_iter()
-        .find(|iface| iface.index == index)
-}
-
-pub fn get_interface_by_name(name: String) -> Option<Interface> {
-    nex::net::interface::get_interfaces()
-        .into_iter()
-        .find(|iface| iface.name == name)
-}
-
-pub fn get_interface_ipv4(iface: &Interface) -> Option<IpAddr> {
-    iface.ipv4.first().map(|ip| IpAddr::V4(ip.addr()))
-}
-
-pub fn get_interface_global_ipv6(iface: &Interface) -> Option<IpAddr> {
-    for ip in iface.ipv6.clone() {
-        if nex::net::ip::is_global_ipv6(&ip.addr()) {
-            return Some(IpAddr::V6(ip.addr()));
-        }
-    }
-    None
-}
-
-pub fn get_interface_local_ipv6(iface: &Interface) -> Option<IpAddr> {
-    for ip in iface.ipv6.clone() {
-        if !nex::net::ip::is_global_ipv6(&ip.addr()) {
-            return Some(IpAddr::V6(ip.addr()));
-        }
-    }
-    None
-}
-
-pub fn get_interface_ips(iface: &Interface) -> Vec<String> {
-    let mut ips: Vec<String> = Vec::new();
-    for ip in iface.ipv4.clone() {
-        ips.push(ip.addr().to_string());
-    }
-    for ip in iface.ipv6.clone() {
-        ips.push(ip.addr().to_string());
-    }
-    ips
-}
-
-pub fn get_local_ips(if_index: u32) -> HashSet<IpAddr> {
-    let mut ips: HashSet<IpAddr> = HashSet::new();
-    if let Some(interface) = get_interface_by_index(if_index) {
-        for ip in interface.ipv4.clone() {
-            ips.insert(IpAddr::V4(ip.addr()));
-        }
-        for ip in interface.ipv6.clone() {
-            ips.insert(IpAddr::V6(ip.addr()));
-        }
-    } else {
-        tracing::warn!(
-            "failed to resolve interface by index {}; falling back to localhost only",
-            if_index
-        );
-    }
-    // localhost IP addresses
-    ips.insert(IpAddr::V4(Ipv4Addr::LOCALHOST));
-    ips.insert(IpAddr::V6(Ipv6Addr::LOCALHOST));
-    ips
-}
-
-pub fn get_default_local_ips() -> HashSet<IpAddr> {
-    let mut ips: HashSet<IpAddr> = HashSet::new();
-    // Default interface IP addresses
-    match netdev::get_default_interface() {
-        Ok(default_interface) => {
-            for ip in default_interface.ipv4.clone() {
-                ips.insert(IpAddr::V4(ip.addr()));
-            }
-            for ip in default_interface.ipv6.clone() {
-                ips.insert(IpAddr::V6(ip.addr()));
-            }
-        }
-        Err(e) => {
-            tracing::warn!(
-                "failed to resolve default interface; falling back to localhost only: {}",
-                e
-            );
-        }
-    }
-    // localhost IP addresses
-    ips.insert(IpAddr::V4(Ipv4Addr::LOCALHOST));
-    ips.insert(IpAddr::V6(Ipv6Addr::LOCALHOST));
-    ips
-}
-
-pub fn get_interface_local_ips(iface: &Interface) -> HashSet<IpAddr> {
-    let mut ips: HashSet<IpAddr> = HashSet::new();
-    for ip in iface.ipv4.clone() {
-        ips.insert(IpAddr::V4(ip.addr()));
-    }
-    for ip in iface.ipv6.clone() {
-        ips.insert(IpAddr::V6(ip.addr()));
-    }
-    // localhost IP addresses
-    ips.insert(IpAddr::V4(Ipv4Addr::LOCALHOST));
-    ips.insert(IpAddr::V6(Ipv6Addr::LOCALHOST));
-    ips
-}
-
 pub fn get_local_ip_map() -> HashMap<IpAddr, String> {
-    let mut ip_map: HashMap<IpAddr, String> = HashMap::new();
-    for iface in nex::net::interface::get_interfaces() {
-        for ip in iface.ipv4.clone() {
-            ip_map.insert(IpAddr::V4(ip.addr()), iface.name.clone());
+    let mut ip_map = HashMap::new();
+    for interface in nex::net::interface::get_interfaces() {
+        for ip in &interface.ipv4 {
+            ip_map.insert(IpAddr::V4(ip.addr()), interface.name.clone());
         }
-        for ip in iface.ipv6.clone() {
-            ip_map.insert(IpAddr::V6(ip.addr()), iface.name.clone());
+        for ip in &interface.ipv6 {
+            ip_map.insert(IpAddr::V6(ip.addr()), interface.name.clone());
         }
     }
     ip_map
 }
 
-// get usable interface list
-pub fn get_usable_interfaces() -> Vec<Interface> {
-    let mut usable_interfaces: Vec<Interface> = Vec::new();
-    for iface in nex::net::interface::get_interfaces() {
-        if iface.is_up() && (!iface.ipv4.is_empty() || !iface.ipv6.is_empty()) {
-            usable_interfaces.push(iface);
+fn is_usable(interface: &Interface) -> bool {
+    interface.is_up() && (!interface.ipv4.is_empty() || !interface.ipv6.is_empty())
+}
+
+pub fn resolve_capture_interfaces(names: &[String]) -> Result<Vec<Interface>> {
+    let available = nex::net::interface::get_interfaces();
+    if names.is_empty() {
+        let interfaces: Vec<Interface> = available.into_iter().filter(is_usable).collect();
+        if interfaces.is_empty() {
+            bail!("no usable capture interfaces were found");
         }
-    }
-    usable_interfaces
-}
-
-pub fn get_interfaces_by_name(names: &[String]) -> Vec<Interface> {
-    let mut interfaces: Vec<Interface> = Vec::new();
-    for iface in nex::net::interface::get_interfaces() {
-        if names.contains(&iface.name) {
-            interfaces.push(iface);
+        Ok(interfaces)
+    } else {
+        let interfaces: Vec<Interface> = available
+            .into_iter()
+            .filter(|interface| names.contains(&interface.name) && is_usable(interface))
+            .collect();
+        let resolved: HashSet<&str> = interfaces
+            .iter()
+            .map(|interface| interface.name.as_str())
+            .collect();
+        let missing: Vec<&str> = names
+            .iter()
+            .map(String::as_str)
+            .filter(|name| !resolved.contains(name))
+            .collect();
+        if !missing.is_empty() {
+            bail!(
+                "unknown or unavailable interface(s): {}",
+                missing.join(", ")
+            );
         }
-    }
-    interfaces
-}
-
-pub fn get_interface_macaddr(iface: &Interface) -> MacAddr {
-    match &iface.mac_addr {
-        Some(mac_addr) => *mac_addr,
-        None => MacAddr::zero(),
+        Ok(interfaces)
     }
 }
 
-pub fn get_gateway_macaddr(iface: &Interface) -> MacAddr {
-    match &iface.gateway {
-        Some(gateway) => gateway.mac_addr,
-        None => MacAddr::zero(),
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reports_the_name_of_an_unavailable_interface() {
+        let name = "ntap-interface-that-does-not-exist".to_string();
+        let error = resolve_capture_interfaces(std::slice::from_ref(&name))
+            .expect_err("a fabricated interface must be rejected");
+        assert!(error.to_string().contains(&name));
     }
 }
