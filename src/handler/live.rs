@@ -18,9 +18,11 @@ pub struct LiveOptions {
     pub ports: Vec<u16>,
     pub tickrate: Option<u64>,
     pub limit: Option<usize>,
+    pub write: Option<std::path::PathBuf>,
 }
 
 pub async fn live_capture(opts: LiveOptions) -> Result<()> {
+    crate::tui::terminal::ensure_terminal()?;
     if crate::sys::get_config_dir_path().is_none() {
         anyhow::bail!("Could not get config directory path");
     }
@@ -53,15 +55,6 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
     let ips: HashSet<IpAddr> = opts.ips.iter().copied().collect();
     let ports: HashSet<u16> = opts.ports.iter().copied().collect();
 
-    if !ip_next_protocols.is_empty() || !ips.is_empty() || !ports.is_empty() {
-        ethertypes.insert(EtherType::Ipv4);
-        ethertypes.insert(EtherType::Ipv6);
-        if !ports.is_empty() {
-            ip_next_protocols.insert(IpNextProtocol::Tcp);
-            ip_next_protocols.insert(IpNextProtocol::Udp);
-        }
-    }
-
     let storage_capacity = opts.limit.unwrap_or(u8::MAX as usize);
     let packet_storage: Arc<PacketStorage> =
         Arc::new(PacketStorage::with_capacity(storage_capacity));
@@ -69,6 +62,20 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
     let target_interfaces =
         crate::net::interface::resolve_capture_interfaces(&config.network.interfaces)?;
 
+    let mut recording = opts
+        .write
+        .as_deref()
+        .map(crate::net::recording::create)
+        .transpose()?;
+    if let Some(writer) = &mut recording {
+        for interface in &target_interfaces {
+            writer.register_interface(
+                interface.index,
+                &interface.name,
+                cfg!(target_os = "linux") && interface.is_tun(),
+            )?;
+        }
+    }
     const CAPTURE_QUEUE_CAPACITY: usize = 4096;
     let (tx, rx): (SyncSender<PacketFrame>, Receiver<PacketFrame>) =
         sync_channel(CAPTURE_QUEUE_CAPACITY);
@@ -80,6 +87,7 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
     for iface in target_interfaces {
         let iface = iface.clone();
         let mut pcap_option = crate::net::pcap::PacketCaptureOptions::new();
+        pcap_option.record = recording.is_some();
         pcap_option.ether_types = ethertypes.clone();
         pcap_option.ip_protocols = ip_next_protocols.clone();
         pcap_option.src_ips = ips.clone();
@@ -101,6 +109,7 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
             );
         })?;
     }
+    let recording_status = ready_tx.clone();
     drop(ready_tx);
     let mut startup_error = None;
     for _ in 0..capture_workers.worker_count() {
@@ -125,16 +134,29 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
         .name("live-packet-receiver".to_string())
         .spawn(move || {
             while let Ok(mut frame) = rx.recv() {
+                if let Some(writer) = &mut recording
+                    && let Err(error) = writer.write_packet(&frame)
+                {
+                    let _ = recording_status.send(Err(format!("failed to write capture: {error}")));
+                    return Err(error);
+                }
+                frame.raw_data = bytes::Bytes::new();
                 frame.capture_no = packet_storage.generate_capture_no();
                 packet_storage.add_packet(frame);
             }
+            if let Some(writer) = recording {
+                writer.finish()?;
+            }
+            Ok::<_, anyhow::Error>(())
         })?;
 
-    let result = crate::tui::live::terminal::run(config, &packet_storage_ui).await;
+    let result =
+        crate::tui::live::terminal::run(config, &packet_storage_ui, ready_rx, &dropped_packets)
+            .await;
     capture_workers.shutdown();
     drop(tx);
-    if receiver_worker.join().is_err() {
-        tracing::error!("the packet receiver thread panicked during shutdown");
-    }
+    receiver_worker
+        .join()
+        .map_err(|_| anyhow::anyhow!("the packet receiver thread panicked"))??;
     result
 }

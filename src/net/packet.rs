@@ -10,6 +10,13 @@ use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PacketFrame {
+    /// Original capture bytes, populated only while recording and cleared before storage.
+    #[serde(skip)]
+    pub raw_data: Bytes,
+    #[serde(skip)]
+    pub raw_ip: bool,
+    #[serde(skip)]
+    pub captured_at: std::time::Duration,
     /// Capture number.
     pub capture_no: usize,
     /// interface index
@@ -38,6 +45,11 @@ impl PacketFrame {
         frame: nex::packet::frame::Frame,
     ) -> PacketFrame {
         PacketFrame {
+            raw_data: Bytes::new(),
+            raw_ip: false,
+            captured_at: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default(),
             capture_no,
             if_index,
             if_name,
@@ -211,6 +223,11 @@ mod tests {
 
     fn packet(capture_no: usize) -> PacketFrame {
         PacketFrame {
+            raw_data: Bytes::new(),
+            raw_ip: false,
+            captured_at: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default(),
             capture_no,
             ..Default::default()
         }

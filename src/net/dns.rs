@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -25,46 +24,37 @@ fn create_resolver(timeout: Option<Duration>) -> Option<TokioResolver> {
     }
 }
 
-async fn resolve_ip_async(ip_addr: String) -> Vec<String> {
-    let ip_addr = match IpAddr::from_str(&ip_addr) {
-        Ok(ip_addr) => ip_addr,
-        Err(_) => return vec![],
-    };
-    let timeout = if crate::net::ip::is_global_addr(ip_addr) {
-        Duration::from_millis(1000)
+pub const MAX_CACHE_ENTRIES: usize = 4096;
+
+async fn resolve_ip_async(resolver: &TokioResolver, ip: IpAddr) -> Option<String> {
+    let timeout = if crate::net::ip::is_global_addr(ip) {
+        Duration::from_secs(1)
     } else {
         Duration::from_millis(200)
     };
-    let resolver = match create_resolver(Some(timeout)) {
-        Some(resolver) => resolver,
-        None => return vec![],
-    };
-    match resolver.reverse_lookup(ip_addr).await {
-        Ok(lookup) => lookup
-            .answers()
-            .iter()
-            .map(|record| record.data.to_string().trim_end_matches('.').to_string())
-            .collect(),
-        Err(_) => vec![],
-    }
+    let lookup = tokio::time::timeout(timeout, resolver.reverse_lookup(ip))
+        .await
+        .ok()?
+        .ok()?;
+    lookup
+        .answers()
+        .first()
+        .map(|record| record.data.to_string().trim_end_matches('.').to_string())
 }
 
 pub async fn lookup_ips_async(ips: Vec<IpAddr>) -> HashMap<IpAddr, String> {
-    let mut tasks = stream::iter(ips)
-        .map(|ip| async move {
-            let names = resolve_ip_async(ip.to_string()).await;
-            (ip, names)
+    let Some(resolver) = create_resolver(Some(Duration::from_secs(1))) else {
+        return HashMap::new();
+    };
+    stream::iter(ips)
+        .map(|ip| {
+            let resolver = &resolver;
+            async move { (ip, resolve_ip_async(resolver, ip).await) }
         })
-        .buffer_unordered(10);
-    let mut results: HashMap<IpAddr, String> = HashMap::new();
-    while let Some((ip, names)) = tasks.next().await {
-        if let Some(name) = names.first()
-            && !name.is_empty()
-        {
-            results.insert(ip, name.clone());
-        }
-    }
-    results
+        .buffer_unordered(10)
+        .filter_map(|(ip, name)| async move { name.map(|name| (ip, name)) })
+        .collect()
+        .await
 }
 
 pub fn start_dns_map_update(
@@ -107,12 +97,24 @@ pub fn start_dns_map_update(
             // Best-effort reverse DNS only for unresolved hosts.
             if remote_host.hostname.is_empty() && !reverse_dns_map_inner.contains_key(ip_addr) {
                 lookup_target_ips.push(*ip_addr);
+                if lookup_target_ips.len() >= 100 {
+                    break;
+                }
             }
         }
         drop(remote_hosts_inner);
         drop(reverse_dns_map_inner);
 
-        let dns_map = runtime.block_on(lookup_ips_async(lookup_target_ips));
+        let dns_map = runtime.block_on(async {
+            tokio::select! {
+                result = lookup_ips_async(lookup_target_ips) => result,
+                _ = async {
+                    while !stop.load(std::sync::atomic::Ordering::Acquire) {
+                        tokio::time::sleep(Duration::from_millis(50)).await;
+                    }
+                } => HashMap::new(),
+            }
+        });
 
         let mut remote_hosts_inner = match netstat_storage.remote_hosts.try_lock() {
             Ok(remote_hosts) => remote_hosts,
@@ -143,7 +145,11 @@ pub fn start_dns_map_update(
             {
                 remote_host.hostname = hostname.clone();
             }
-            reverse_dns_map_inner.insert(ip_addr, hostname);
+            if reverse_dns_map_inner.len() < MAX_CACHE_ENTRIES
+                || reverse_dns_map_inner.contains_key(&ip_addr)
+            {
+                reverse_dns_map_inner.insert(ip_addr, hostname);
+            }
         }
         drop(remote_hosts_inner);
         drop(reverse_dns_map_inner);

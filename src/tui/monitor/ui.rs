@@ -340,3 +340,20 @@ fn draw_overview_flows(f: &mut Frame, app: &App, area: Rect) {
 
     f.render_widget(table, area);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn all_tabs_render_at_small_terminal_sizes() {
+        for (width, height) in [(1, 1), (40, 10), (80, 24), (160, 48)] {
+            let mut terminal =
+                ratatui::Terminal::new(ratatui::backend::TestBackend::new(width, height)).unwrap();
+            let mut app = App::new("test".into(), crate::config::AppConfig::default());
+            for tab in FocusTab::ALL {
+                app.selected_tab = tab;
+                terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+            }
+        }
+    }
+}

@@ -102,6 +102,9 @@ struct LiveArgs {
         value_parser = parse_nonzero_usize
     )]
     limit: Option<usize>,
+    /// Save filtered packets to a new PCAPNG file, including interface metadata.
+    #[arg(short = 'w', long = "write", value_name = "path")]
+    write: Option<std::path::PathBuf>,
 }
 
 fn to_monitor_options(cli: &Cli) -> handler::monitor::MonitorOptions {
@@ -122,6 +125,7 @@ fn to_live_options(cli: &Cli, cmd: &LiveArgs) -> handler::live::LiveOptions {
         ports: cli.ports.clone(),
         tickrate: cli.tickrate,
         limit: cmd.limit,
+        write: cmd.write.clone(),
     }
 }
 

@@ -21,6 +21,7 @@ pub struct App<'a> {
     pub row_selecting: bool,
     pub packets: Vec<PacketFrame>,
     pub config: AppConfig,
+    pub dropped_packets: usize,
 }
 
 impl<'a> App<'a> {
@@ -34,6 +35,7 @@ impl<'a> App<'a> {
             row_selecting: false,
             packets: Vec::new(),
             config,
+            dropped_packets: 0,
         }
     }
 
@@ -80,7 +82,7 @@ impl<'a> App<'a> {
     }
 
     pub fn on_key(&mut self, c: char) {
-        match c {
+        match c.to_ascii_lowercase() {
             'q' => {
                 // Quit the application
                 self.should_quit = true;
@@ -103,14 +105,61 @@ impl<'a> App<'a> {
     }
 
     pub fn on_tick(&mut self, packets: Vec<PacketFrame>) {
-        // Update the state of the application
-        // Set the latest packets
+        let selected = self
+            .table_state
+            .selected()
+            .and_then(|index| self.packets.get(index))
+            .map(|packet| packet.capture_no);
         self.packets = packets;
-        // If the user is not selecting a row, scroll to the bottom
-        if !self.row_selecting && !self.packets.is_empty() {
-            self.table_state.select(Some(self.packets.len() - 1));
-        } else if self.packets.is_empty() {
-            self.table_state.select(None);
-        }
+        let index = if self.packets.is_empty() {
+            None
+        } else if self.row_selecting {
+            Some(
+                selected
+                    .and_then(|id| self.packets.iter().position(|p| p.capture_no == id))
+                    .unwrap_or(0),
+            )
+        } else {
+            Some(self.packets.len() - 1)
+        };
+        self.table_state.select(index);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn packets(ids: &[usize]) -> Vec<PacketFrame> {
+        ids.iter()
+            .map(|&capture_no| PacketFrame {
+                capture_no,
+                ..Default::default()
+            })
+            .collect()
+    }
+    #[test]
+    fn selection_tracks_identity_and_clamps_after_eviction() {
+        let mut app = App::new("test", AppConfig::default());
+        app.on_tick(packets(&[1, 2, 3]));
+        app.on_up();
+        app.on_tick(packets(&[2, 3, 4]));
+        assert_eq!(app.table_state.selected(), Some(0));
+        assert_eq!(app.packets[0].capture_no, 2);
+        app.on_tick(packets(&[3, 4, 5]));
+        assert_eq!(app.table_state.selected(), Some(0));
+        app.on_tick(vec![]);
+        assert_eq!(app.table_state.selected(), None);
+    }
+    #[test]
+    fn follow_latest_and_uppercase_controls_work() {
+        let mut app = App::new("test", AppConfig::default());
+        app.on_tick(packets(&[1, 2]));
+        assert_eq!(app.table_state.selected(), Some(1));
+        app.on_up();
+        app.on_key('B');
+        app.on_tick(packets(&[2, 3, 4]));
+        assert_eq!(app.table_state.selected(), Some(2));
+        app.on_key('Q');
+        assert!(app.should_quit);
     }
 }

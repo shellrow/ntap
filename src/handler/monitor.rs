@@ -19,6 +19,7 @@ pub struct MonitorOptions {
 }
 
 pub async fn monitor(opts: MonitorOptions) -> Result<()> {
+    crate::tui::terminal::ensure_terminal()?;
     if crate::sys::get_config_dir_path().is_none() {
         anyhow::bail!("Could not get config directory path");
     }
@@ -49,15 +50,6 @@ pub async fn monitor(opts: MonitorOptions) -> Result<()> {
 
     let ips: HashSet<IpAddr> = opts.ips.iter().copied().collect();
     let ports: HashSet<u16> = opts.ports.iter().copied().collect();
-
-    if !ip_next_protocols.is_empty() || !ips.is_empty() || !ports.is_empty() {
-        ethertypes.insert(EtherType::Ipv4);
-        ethertypes.insert(EtherType::Ipv6);
-        if !ports.is_empty() {
-            ip_next_protocols.insert(IpNextProtocol::Tcp);
-            ip_next_protocols.insert(IpNextProtocol::Udp);
-        }
-    }
 
     let netstat_storage: Arc<NetStatStorage> = Arc::new(NetStatStorage::new());
     let mut netstat_storage_socket = Arc::clone(&netstat_storage);
@@ -123,7 +115,8 @@ pub async fn monitor(opts: MonitorOptions) -> Result<()> {
         })?;
     }
 
-    let result = crate::tui::monitor::terminal::run(config, &mut netstat_storage_ui).await;
+    let result =
+        crate::tui::monitor::terminal::run(config, &mut netstat_storage_ui, ready_rx).await;
     workers.shutdown();
     result
 }

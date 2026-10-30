@@ -10,10 +10,9 @@ use crate::net::socket::{
 };
 use crate::process::{ProcessDisplayInfo, ProcessInfo};
 use bytes::Bytes;
+use hickory_resolver::proto::{op::Message, rr::RData};
 use netdev::MacAddr;
-use nex::packet::dns::{DnsPacket, DnsType};
 use serde::{Deserialize, Serialize};
-use std::net::Ipv4Addr;
 use std::{
     collections::HashMap,
     net::IpAddr,
@@ -21,8 +20,25 @@ use std::{
     time::Duration,
 };
 
+/// Bound per-interval and displayed host/connection cardinality under heavy traffic.
+pub const MAX_TRACKED_ENTRIES: usize = 16_384;
+
+fn record_connection(
+    map: &mut HashMap<SocketConnection, TrafficInfo>,
+    key: SocketConnection,
+    direction: Direction,
+    bytes: usize,
+) {
+    if map.len() < MAX_TRACKED_ENTRIES || map.contains_key(&key) {
+        map.entry(key)
+            .or_insert_with(TrafficInfo::new)
+            .record(direction, bytes);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NetStatStorage {
+    pub started_at: std::time::Instant,
     update_lock: Arc<Mutex<()>>,
     pub traffic: Arc<Mutex<TrafficInfo>>,
     /// Remote Host Traffic Info Map (IpAddr -> RemoteHostInfo)
@@ -41,6 +57,7 @@ impl NetStatStorage {
     pub fn new() -> Self {
         let local_ip_map = interface::get_local_ip_map();
         NetStatStorage {
+            started_at: std::time::Instant::now(),
             update_lock: Arc::new(Mutex::new(())),
             traffic: Arc::new(Mutex::new(TrafficInfo::new())),
             remote_hosts: Arc::new(Mutex::new(HashMap::new())),
@@ -48,36 +65,6 @@ impl NetStatStorage {
             local_socket_map: Arc::new(Mutex::new(HashMap::new())),
             reverse_dns_map: Arc::new(Mutex::new(HashMap::new())),
             local_ip_map: Arc::new(Mutex::new(local_ip_map)),
-        }
-    }
-    /// Get the traffic info. (thread safe clone)
-    fn get_traffic(&self) -> TrafficInfo {
-        match self.traffic.lock() {
-            Ok(traffic) => traffic.clone(),
-            Err(e) => {
-                tracing::error!("get_traffic error: {:?}", e);
-                TrafficInfo::new()
-            }
-        }
-    }
-    /// Get the remote hosts. (thread safe clone)
-    pub fn get_remote_hosts(&self) -> HashMap<IpAddr, RemoteHostInfo> {
-        match self.remote_hosts.lock() {
-            Ok(remote_hosts) => remote_hosts.clone(),
-            Err(e) => {
-                tracing::error!("get_remote_hosts error: {:?}", e);
-                HashMap::new()
-            }
-        }
-    }
-    /// Get the connection_map (thread safe clone)
-    pub fn get_connection_map(&self) -> HashMap<SocketConnection, TrafficInfo> {
-        match self.connection_map.lock() {
-            Ok(connection_map) => connection_map.clone(),
-            Err(e) => {
-                tracing::error!("get_connection_map error: {:?}", e);
-                HashMap::new()
-            }
         }
     }
     /// Get the local_socket_map (thread safe clone)
@@ -91,7 +78,7 @@ impl NetStatStorage {
         }
     }
     pub fn get_local_ip_map(&self) -> HashMap<IpAddr, String> {
-        match self.local_ip_map.try_lock() {
+        match self.local_ip_map.lock() {
             Ok(local_ip_map) => local_ip_map.clone(),
             Err(e) => {
                 tracing::error!("get_local_ip_map error: {:?}", e);
@@ -99,53 +86,7 @@ impl NetStatStorage {
             }
         }
     }
-    fn clear_traffic(&self) {
-        match self.traffic.lock() {
-            Ok(mut traffic) => {
-                *traffic = TrafficInfo::new();
-            }
-            Err(e) => {
-                tracing::error!("clear_traffic error: {:?}", e);
-            }
-        }
-    }
-    fn clear_remote_hosts(&self) {
-        match self.remote_hosts.lock() {
-            Ok(mut remote_hosts) => {
-                remote_hosts.clear();
-            }
-            Err(e) => {
-                tracing::error!("clear_remote_hosts error: {:?}", e);
-            }
-        }
-    }
-    fn clear_connection_map(&self) {
-        match self.connection_map.lock() {
-            Ok(mut connection_map) => {
-                connection_map.clear();
-            }
-            Err(e) => {
-                tracing::error!("clear_connection_map error: {:?}", e);
-            }
-        }
-    }
-    fn clear_local_socket_map(&self) {
-        match self.local_socket_map.lock() {
-            Ok(mut local_socket_map) => {
-                local_socket_map.clear();
-            }
-            Err(e) => {
-                tracing::error!("clear_local_socket_map error: {:?}", e);
-            }
-        }
-    }
-    pub fn reset_data(&self) {
-        self.clear_traffic();
-        self.clear_remote_hosts();
-        self.clear_connection_map();
-        self.clear_local_socket_map();
-    }
-    pub fn clone_data_and_reset(&self) -> NetStatData {
+    pub fn take_data(&self) -> NetStatData {
         let _update_guard = match self.update_lock.lock() {
             Ok(guard) => guard,
             Err(error) => {
@@ -154,57 +95,46 @@ impl NetStatStorage {
             }
         };
         let mut clone: NetStatData = NetStatData::new();
-        clone.traffic = self.get_traffic();
-        clone.remote_hosts = self.get_remote_hosts();
-        clone.connection_map = self.get_connection_map();
+        clone.traffic = std::mem::replace(
+            &mut *self
+                .traffic
+                .lock()
+                .unwrap_or_else(|error| error.into_inner()),
+            TrafficInfo::new(),
+        );
+        clone.remote_hosts = std::mem::take(
+            &mut *self
+                .remote_hosts
+                .lock()
+                .unwrap_or_else(|error| error.into_inner()),
+        );
+        clone.connection_map = std::mem::take(
+            &mut *self
+                .connection_map
+                .lock()
+                .unwrap_or_else(|error| error.into_inner()),
+        );
         clone.local_socket_map = self.get_local_socket_map();
         clone.local_ip_map = self.get_local_ip_map();
-        self.reset_data();
         clone
     }
     pub fn parse_dns_packet(&self, dns_packet: &Bytes) {
-        if let Ok(dns) = DnsPacket::try_from_buf(dns_packet) {
-            let mut name = String::new();
-            let mut ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-            for query in &dns.queries {
-                match query.qtype {
-                    DnsType::A | DnsType::AAAA => match query.qname_parsed() {
-                        Ok(qname) => {
-                            name = qname.to_string();
-                        }
-                        Err(e) => {
-                            tracing::error!("Failed to parse query name: {:?}", e);
-                        }
-                    },
-                    _ => {}
-                }
-            }
-            for response in &dns.responses {
-                match response.rtype {
-                    DnsType::A | DnsType::AAAA => {
-                        if let Some(ip) = response.ip() {
-                            ip_addr = ip;
-                        } else {
-                            tracing::error!(
-                                "Failed to get IP address from response: {:?}",
-                                response
-                            );
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            let mut reverse_dns_map_inner = match self.reverse_dns_map.lock() {
-                Ok(inner) => inner,
-                Err(e) => {
-                    tracing::error!("Failed to lock reverse_dns_map: {:?}", e);
-                    return;
-                }
+        let Ok(message) = Message::from_vec(dns_packet) else {
+            return;
+        };
+        let Ok(mut cache) = self.reverse_dns_map.lock() else {
+            return;
+        };
+        for answer in message.answers {
+            let ip = match answer.data {
+                RData::A(ip) => IpAddr::V4(ip.0),
+                RData::AAAA(ip) => IpAddr::V6(ip.0),
+                _ => continue,
             };
-            if !name.is_empty() && ip_addr != IpAddr::V4(Ipv4Addr::UNSPECIFIED) {
-                reverse_dns_map_inner.insert(ip_addr, name);
+            if cache.len() >= crate::net::dns::MAX_CACHE_ENTRIES && !cache.contains_key(&ip) {
+                continue;
             }
-            drop(reverse_dns_map_inner);
+            cache.insert(ip, answer.name.to_utf8().trim_end_matches('.').to_string());
         }
     }
     pub fn update(&self, frame: PacketFrame) {
@@ -246,10 +176,10 @@ impl NetStatStorage {
                 return;
             }
         };
-        let datalink_layer = match frame.datalink {
-            Some(datalink) => datalink,
-            None => return,
-        };
+        let ethernet = frame
+            .datalink
+            .as_ref()
+            .and_then(|layer| layer.ethernet.as_ref());
         let ip_layer = match frame.ip {
             Some(ip) => ip,
             None => return,
@@ -278,14 +208,14 @@ impl NetStatStorage {
         traffic_inner.record(direction, frame.packet_len);
         let mac_addr: String = match direction {
             Direction::Egress => {
-                if let Some(ethernet) = datalink_layer.ethernet {
+                if let Some(ethernet) = ethernet {
                     ethernet.destination.address()
                 } else {
                     MacAddr::zero().to_string()
                 }
             }
             Direction::Ingress => {
-                if let Some(ethernet) = datalink_layer.ethernet {
+                if let Some(ethernet) = ethernet {
                     ethernet.source.address()
                 } else {
                     MacAddr::zero().to_string()
@@ -312,10 +242,7 @@ impl NetStatStorage {
                 }
             }
         };
-        let interface_name = match local_ip_map_inner.get(&local_ip_addr) {
-            Some(name) => name.clone(),
-            None => String::from("unknown"),
-        };
+        let interface_name = frame.if_name.clone();
         let local_port: u16 = match direction {
             Direction::Egress => {
                 if let Some(transport) = &frame.transport {
@@ -403,10 +330,12 @@ impl NetStatStorage {
                     remote_port,
                     protocol: TransportProtocol::TCP,
                 };
-                let socket_traffic: &mut TrafficInfo = connections_inner
-                    .entry(socket_connection)
-                    .or_insert(TrafficInfo::new());
-                socket_traffic.record(direction, frame.packet_len);
+                record_connection(
+                    &mut connections_inner,
+                    socket_connection,
+                    direction,
+                    frame.packet_len,
+                );
             }
             if let Some(_udp) = transport.udp {
                 let socket_connection: SocketConnection = SocketConnection {
@@ -417,12 +346,16 @@ impl NetStatStorage {
                     remote_port,
                     protocol: TransportProtocol::UDP,
                 };
-                let socket_traffic: &mut TrafficInfo = connections_inner
-                    .entry(socket_connection)
-                    .or_insert(TrafficInfo::new());
-                socket_traffic.record(direction, frame.packet_len);
+                record_connection(
+                    &mut connections_inner,
+                    socket_connection,
+                    direction,
+                    frame.packet_len,
+                );
                 // Try parse DNS packet
-                self.parse_dns_packet(&frame.payload);
+                if remote_port == 53 {
+                    self.parse_dns_packet(&frame.payload);
+                }
             }
         }
         let reverse_dns_map_inner = match self.reverse_dns_map.lock() {
@@ -438,14 +371,14 @@ impl NetStatStorage {
             hostname = name.to_string();
         }
         // Update or Insert RemoteHostInfo
-        let remote_host: &mut RemoteHostInfo =
-            remote_hosts_inner
-                .entry(remote_ip_addr)
-                .or_insert(RemoteHostInfo::new(
-                    mac_addr,
-                    remote_ip_addr,
-                    hostname.clone(),
-                ));
+        if remote_hosts_inner.len() >= MAX_TRACKED_ENTRIES
+            && !remote_hosts_inner.contains_key(&remote_ip_addr)
+        {
+            return;
+        }
+        let remote_host: &mut RemoteHostInfo = remote_hosts_inner
+            .entry(remote_ip_addr)
+            .or_insert_with(|| RemoteHostInfo::new(mac_addr, remote_ip_addr, hostname.clone()));
         remote_host.traffic_info.record(direction, frame.packet_len);
         if remote_host.hostname.is_empty() && !hostname.is_empty() {
             remote_host.hostname = hostname.clone();
@@ -482,6 +415,17 @@ impl NetStatData {
         // Update Traffic Info
         self.traffic.update_bytes_per_sec(&other.traffic, duration);
         self.traffic.add_traffic(&other.traffic);
+        // Reset idle rates before applying this interval's observations.
+        let idle = TrafficInfo::new();
+        for host in self.remote_hosts.values_mut() {
+            host.traffic_info.update_bytes_per_sec(&idle, duration);
+        }
+        for traffic in self.connection_map.values_mut() {
+            traffic.update_bytes_per_sec(&idle, duration);
+        }
+        // Keep aggregate totals even when detail cardinality reaches the limit.
+        let mut host_capacity = MAX_TRACKED_ENTRIES.saturating_sub(self.remote_hosts.len());
+        let mut connection_capacity = MAX_TRACKED_ENTRIES.saturating_sub(self.connection_map.len());
         // Update RemoteHostInfo
         other
             .remote_hosts
@@ -492,7 +436,14 @@ impl NetStatData {
                     host_entry.merge(host, duration);
                 }
                 std::collections::hash_map::Entry::Vacant(entry) => {
-                    entry.insert(host.clone());
+                    if host_capacity == 0 {
+                        return;
+                    }
+                    host_capacity -= 1;
+                    let mut host = host.clone();
+                    host.traffic_info
+                        .update_bytes_per_sec(&host.traffic_info.clone(), duration);
+                    entry.insert(host);
                 }
             });
         // Update SocketConnection Traffic Info
@@ -507,25 +458,18 @@ impl NetStatData {
                         traffic_info_entry.add_traffic(traffic_info);
                     }
                     std::collections::hash_map::Entry::Vacant(entry) => {
-                        entry.insert(traffic_info.clone());
+                        if connection_capacity == 0 {
+                            return;
+                        }
+                        connection_capacity -= 1;
+                        let mut traffic = traffic_info.clone();
+                        traffic.update_bytes_per_sec(traffic_info, duration);
+                        entry.insert(traffic);
                     }
                 },
             );
-        // Update local_socket_map
-        other
-            .local_socket_map
-            .iter()
-            .for_each(|(local_socket, socket_process)| {
-                match self.local_socket_map.entry(local_socket.clone()) {
-                    std::collections::hash_map::Entry::Occupied(mut entry) => {
-                        let socket_process_entry = entry.get_mut();
-                        socket_process_entry.merge(socket_process);
-                    }
-                    std::collections::hash_map::Entry::Vacant(entry) => {
-                        entry.insert(socket_process.clone());
-                    }
-                }
-            });
+        // Socket snapshots replace stale process ownership and closed sockets.
+        self.local_socket_map = other.local_socket_map;
         // Update local_ip_map
         self.local_ip_map = other.local_ip_map;
     }
@@ -535,61 +479,13 @@ impl NetStatData {
     // If the entry is older than ttl, it will be removed.
     pub fn remove_old_entries(&mut self, ttl: Duration) {
         let now = std::time::SystemTime::now();
-        let remote_hosts: HashMap<IpAddr, RemoteHostInfo> = self
-            .remote_hosts
-            .iter()
-            .filter(
-                |(_ip, host)| match now.duration_since(host.traffic_info.last_seen) {
-                    Ok(duration) => {
-                        if duration > ttl {
-                            return false;
-                        }
-                        true
-                    }
-                    Err(e) => {
-                        tracing::error!("remove_old_entries error: {:?}", e);
-                        false
-                    }
-                },
-            )
-            .map(|(ip, host)| (*ip, host.clone()))
-            .collect();
-        self.remote_hosts = remote_hosts;
-        let mut remove_local_socket: Vec<LocalSocket> = Vec::new();
-        let connection_map: HashMap<SocketConnection, TrafficInfo> = self
-            .connection_map
-            .iter()
-            .filter(
-                |(conn, traffic_info)| match now.duration_since(traffic_info.last_seen) {
-                    Ok(duration) => {
-                        if duration > ttl {
-                            remove_local_socket.push(LocalSocket {
-                                interface_name: conn.interface_name.clone(),
-                                port: conn.local_port,
-                                protocol: conn.protocol,
-                            });
-                            return false;
-                        }
-                        true
-                    }
-                    Err(e) => {
-                        tracing::error!("remove_old_entries error: {:?}", e);
-                        remove_local_socket.push(LocalSocket {
-                            interface_name: conn.interface_name.clone(),
-                            port: conn.local_port,
-                            protocol: conn.protocol,
-                        });
-                        false
-                    }
-                },
-            )
-            .map(|(conn, traffic_info)| (conn.clone(), traffic_info.clone()))
-            .collect();
-        self.connection_map = connection_map;
-
-        for local_socket in remove_local_socket {
-            self.local_socket_map.remove(&local_socket);
-        }
+        self.remote_hosts.retain(|_, host| {
+            now.duration_since(host.traffic_info.last_seen)
+                .unwrap_or_default()
+                <= ttl
+        });
+        self.connection_map
+            .retain(|_, traffic| now.duration_since(traffic.last_seen).unwrap_or_default() <= ttl);
     }
 
     pub fn get_remote_hosts(&self, limit: Option<usize>) -> Vec<HostDisplayInfo> {
@@ -614,7 +510,7 @@ impl NetStatData {
             }
         });
         let mut host_traffic_vec: Vec<(&IpAddr, &usize)> = host_traffic_map.iter().collect();
-        host_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
+        host_traffic_vec.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
         let mut remote_hosts: Vec<HostDisplayInfo> = Vec::new();
         // limit : if limit is None, return all remote hosts.
         for (ip, _) in host_traffic_vec
@@ -635,22 +531,48 @@ impl NetStatData {
         remote_hosts
     }
 
+    fn socket_process(&self, socket: &LocalSocket) -> Option<&SocketProcess> {
+        self.local_socket_map.get(socket).or_else(|| {
+            let wildcard = LocalSocket::new(
+                match socket.local_ip_addr {
+                    IpAddr::V4(_) => IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
+                    IpAddr::V6(_) => IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED),
+                },
+                socket.port,
+                socket.protocol,
+            );
+            self.local_socket_map.get(&wildcard)
+        })
+    }
+
     pub fn get_processes(&self, limit: Option<usize>) -> Vec<ProcessDisplayInfo> {
         let mut process_traffic_map: HashMap<u32, TrafficInfo> = HashMap::new();
         let mut process_map: HashMap<u32, ProcessInfo> = HashMap::new();
         self.connection_map.iter().for_each(|(conn, traffic_info)| {
             let local_socket: LocalSocket = LocalSocket {
-                interface_name: conn.interface_name.clone(),
+                local_ip_addr: conn.local_ip_addr,
                 port: conn.local_port,
                 protocol: conn.protocol,
             };
-            if let Some(socket_process) = self.local_socket_map.get(&local_socket)
+            if let Some(socket_process) = self.socket_process(&local_socket)
                 && let Some(process) = &socket_process.process
             {
                 match process_traffic_map.get(&process.pid) {
                     Some(traffic) => {
                         let mut traffic = traffic.clone();
                         traffic.add_traffic(traffic_info);
+                        traffic.egress_packets_per_sec = traffic
+                            .egress_packets_per_sec
+                            .saturating_add(traffic_info.egress_packets_per_sec);
+                        traffic.ingress_packets_per_sec = traffic
+                            .ingress_packets_per_sec
+                            .saturating_add(traffic_info.ingress_packets_per_sec);
+                        traffic.egress_bytes_per_sec = traffic
+                            .egress_bytes_per_sec
+                            .saturating_add(traffic_info.egress_bytes_per_sec);
+                        traffic.ingress_bytes_per_sec = traffic
+                            .ingress_bytes_per_sec
+                            .saturating_add(traffic_info.ingress_bytes_per_sec);
                         process_traffic_map.insert(process.pid, traffic);
                     }
                     None => {
@@ -668,7 +590,7 @@ impl NetStatData {
         // Sort process_total_traffic_map by traffic
         let mut process_total_traffic_vec: Vec<(&u32, &usize)> =
             process_total_traffic_map.iter().collect();
-        process_total_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
+        process_total_traffic_vec.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
         // Create top processes from process_total_traffic_vec
         let mut top_processes: Vec<ProcessDisplayInfo> = Vec::new();
         // limit : if limit is None, return all processes.
@@ -698,7 +620,7 @@ impl NetStatData {
             .collect();
         let mut connection_total_traffic_vec: Vec<(&SocketConnection, &usize)> =
             connection_total_traffic_map.iter().collect();
-        connection_total_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
+        connection_total_traffic_vec.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
         let mut top_connections: Vec<SocketDisplayInfo> = Vec::new();
         // limit : if limit is None, return all connections.
         for (conn, _) in connection_total_traffic_vec
@@ -706,8 +628,8 @@ impl NetStatData {
             .take(limit.unwrap_or(connection_total_traffic_vec.len()))
         {
             // Get process info from local_socket_map
-            let process: Option<ProcessInfo> = match self.local_socket_map.get(&LocalSocket {
-                interface_name: conn.interface_name.clone(),
+            let process: Option<ProcessInfo> = match self.socket_process(&LocalSocket {
+                local_ip_addr: conn.local_ip_addr,
                 port: conn.local_port,
                 protocol: conn.protocol,
             }) {
@@ -733,5 +655,125 @@ impl NetStatData {
             }
         }
         top_connections
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn observation(bytes: usize) -> NetStatData {
+        let mut data = NetStatData::new();
+        let ip = "192.0.2.1".parse().unwrap();
+        let mut host = RemoteHostInfo::new(String::new(), ip, String::new());
+        host.traffic_info.record(Direction::Ingress, bytes);
+        data.traffic.record(Direction::Ingress, bytes);
+        data.remote_hosts.insert(ip, host);
+        data
+    }
+    #[test]
+    fn first_interval_sets_rates_and_idle_interval_clears_them() {
+        let mut data = NetStatData::new();
+        data.merge(observation(1000), Duration::from_millis(500));
+        let ip: IpAddr = "192.0.2.1".parse().unwrap();
+        assert_eq!(
+            data.remote_hosts[&ip].traffic_info.ingress_bytes_per_sec,
+            2000
+        );
+        data.merge(NetStatData::new(), Duration::from_secs(1));
+        assert_eq!(data.remote_hosts[&ip].traffic_info.ingress_bytes_per_sec, 0);
+        assert_eq!(data.remote_hosts[&ip].traffic_info.bytes_received, 1000);
+    }
+    #[test]
+    fn snapshots_preserve_socket_ownership_between_polls() {
+        let storage = NetStatStorage::new();
+        let key = LocalSocket::new("192.0.2.1".parse().unwrap(), 80, TransportProtocol::TCP);
+        storage
+            .local_socket_map
+            .lock()
+            .unwrap()
+            .insert(key.clone(), SocketProcess::new());
+        assert!(storage.take_data().local_socket_map.contains_key(&key));
+        assert!(storage.take_data().local_socket_map.contains_key(&key));
+    }
+    #[test]
+    fn closed_socket_ownership_is_not_retained_forever() {
+        let mut data = NetStatData::new();
+        data.local_socket_map.insert(
+            LocalSocket::new("192.0.2.1".parse().unwrap(), 80, TransportProtocol::TCP),
+            SocketProcess::new(),
+        );
+        data.merge(NetStatData::new(), Duration::from_secs(1));
+        assert!(data.local_socket_map.is_empty());
+    }
+    #[test]
+    fn raw_ip_packets_are_counted_without_an_ethernet_header() {
+        let storage = NetStatStorage::new();
+        let local: IpAddr = "192.0.2.1".parse().unwrap();
+        storage
+            .local_ip_map
+            .lock()
+            .unwrap()
+            .insert(local, "tun-test".into());
+        let mut bytes = vec![0; 28];
+        bytes[0] = 0x45;
+        bytes[3] = 28;
+        bytes[8] = 64;
+        bytes[9] = 17;
+        bytes[12..16].copy_from_slice(&[192, 0, 2, 1]);
+        bytes[16..20].copy_from_slice(&[198, 51, 100, 1]);
+        bytes[24..26].copy_from_slice(&8u16.to_be_bytes());
+        let frame = nex::packet::frame::Frame::from_buf(
+            &bytes,
+            nex::packet::frame::ParseOption {
+                from_ip_packet: true,
+                offset: 0,
+            },
+        )
+        .unwrap();
+        storage.update(PacketFrame::from_nex_frame(1, 1, "tun-test".into(), frame));
+        let data = storage.take_data();
+        assert_eq!(data.traffic.packet_sent, 1);
+        assert_eq!(data.traffic.bytes_sent, 28);
+        assert_eq!(data.connection_map.len(), 1);
+    }
+    #[test]
+    fn wildcard_sockets_resolve_without_conflating_address_families() {
+        let mut data = NetStatData::new();
+        data.local_socket_map.insert(
+            LocalSocket::new("0.0.0.0".parse().unwrap(), 80, TransportProtocol::TCP),
+            SocketProcess::new(),
+        );
+        assert!(
+            data.socket_process(&LocalSocket::new(
+                "192.0.2.1".parse().unwrap(),
+                80,
+                TransportProtocol::TCP
+            ))
+            .is_some()
+        );
+        assert!(
+            data.socket_process(&LocalSocket::new(
+                "::1".parse().unwrap(),
+                80,
+                TransportProtocol::TCP
+            ))
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn dns_cache_keeps_each_answer_with_its_own_name() {
+        // A compressed DNS response containing two A records for example.com.
+        let mut bytes = vec![0, 1, 0x81, 0x80, 0, 1, 0, 2, 0, 0, 0, 0];
+        bytes.extend_from_slice(b"\x07example\x03com\x00\x00\x01\x00\x01");
+        for ip in [[192, 0, 2, 1], [192, 0, 2, 2]] {
+            bytes.extend_from_slice(&[0xc0, 0x0c, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4]);
+            bytes.extend_from_slice(&ip);
+        }
+        let storage = NetStatStorage::new();
+        storage.parse_dns_packet(&Bytes::from(bytes));
+        let cache = storage.reverse_dns_map.lock().unwrap();
+        assert_eq!(cache.len(), 2);
+        assert!(cache.values().all(|name| name == "example.com"));
     }
 }

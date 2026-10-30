@@ -42,7 +42,8 @@ impl TrafficInfo {
         self.packet_received = self.packet_received.saturating_add(traffic.packet_received);
         self.bytes_sent = self.bytes_sent.saturating_add(traffic.bytes_sent);
         self.bytes_received = self.bytes_received.saturating_add(traffic.bytes_received);
-        self.last_seen = SystemTime::now();
+        self.first_seen = self.first_seen.min(traffic.first_seen);
+        self.last_seen = self.last_seen.max(traffic.last_seen);
     }
     pub fn record(&mut self, direction: Direction, bytes: usize) {
         match direction {

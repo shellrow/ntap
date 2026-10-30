@@ -4,6 +4,7 @@ pub mod interface;
 pub mod ip;
 pub mod packet;
 pub mod pcap;
+pub mod recording;
 pub mod socket;
 pub mod stat;
 pub mod traffic;

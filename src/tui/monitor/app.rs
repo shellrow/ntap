@@ -87,7 +87,7 @@ impl App {
     }
 
     pub fn on_key(&mut self, c: char) {
-        match c {
+        match c.to_ascii_lowercase() {
             'q' => self.should_quit = true,
             ' ' => self.should_pause = !self.should_pause,
             't' => self.show_bandwidth = !self.show_bandwidth,
@@ -95,11 +95,12 @@ impl App {
         }
     }
 
-    pub fn on_tick(&mut self, netstat_data: NetStatData) {
-        let tick_rate = Duration::from_millis(self.config.display.tick_rate);
+    pub fn on_tick(&mut self, netstat_data: NetStatData, tick_rate: Duration) {
         if self.should_pause {
             self.pending_data.merge(netstat_data, tick_rate);
             self.pending_duration = self.pending_duration.saturating_add(tick_rate);
+            self.pending_data
+                .remove_old_entries(Duration::from_millis(self.config.network.entry_ttl));
             return;
         }
         if !self.pending_duration.is_zero() {
@@ -119,5 +120,29 @@ impl App {
         self.processes = self
             .netstat_data
             .get_processes(Some(self.config.display.connection_count));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::net::traffic::Direction;
+    fn traffic(bytes: usize) -> NetStatData {
+        let mut data = NetStatData::new();
+        data.traffic.record(Direction::Ingress, bytes);
+        data
+    }
+    #[test]
+    fn pause_preserves_totals_and_resume_uses_current_interval_rate() {
+        let mut app = App::new("test".into(), AppConfig::default());
+        app.on_tick(traffic(100), Duration::from_secs(1));
+        app.on_key(' ');
+        app.on_tick(traffic(200), Duration::from_secs(2));
+        app.on_tick(traffic(300), Duration::from_secs(2));
+        assert_eq!(app.netstat_data.traffic.bytes_received, 100);
+        app.on_key(' ');
+        app.on_tick(traffic(50), Duration::from_millis(500));
+        assert_eq!(app.netstat_data.traffic.bytes_received, 650);
+        assert_eq!(app.netstat_data.traffic.ingress_bytes_per_sec, 100);
     }
 }

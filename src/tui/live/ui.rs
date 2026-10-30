@@ -39,7 +39,11 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         draw_live_capture_tab(f, app, chunks[1]);
     };
     // Draw footer
-    let footer = "Press <Q> quit | <SPACE> pause | <Up>/<Down> select | <B> jump latest";
+    let footer = format!(
+        "Q quit | Space pause | Up/Down select | B latest | Retained: {} | Dropped: {}",
+        app.packets.len(),
+        app.dropped_packets
+    );
     let footer = Paragraph::new(text::Line::from(Span::styled(
         footer,
         Style::default().fg(Color::DarkGray),
@@ -83,7 +87,7 @@ fn packet_info(packet: &crate::net::packet::PacketFrame) -> String {
             }
 
             let payload_len = packet.payload.len() as u32;
-            let seq_end = tcp.sequence.saturating_add(payload_len);
+            let seq_end = tcp.sequence.wrapping_add(payload_len);
             if payload_len > 0 {
                 let base = format!(
                     "Flags [{}], seq {}:{}, ack {}, win {}, length {}",
@@ -444,5 +448,16 @@ mod tests {
             payload_hex_preview(&[0xde, 0xad, 0xbe, 0xef, 0x01], 4),
             "de ad be ef ..."
         );
+    }
+    #[test]
+    fn renders_empty_and_populated_views_at_small_terminal_sizes() {
+        for (width, height) in [(1, 1), (40, 10), (80, 24), (160, 48)] {
+            let mut terminal =
+                ratatui::Terminal::new(ratatui::backend::TestBackend::new(width, height)).unwrap();
+            let mut app = App::new("test", crate::config::AppConfig::default());
+            terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+            app.on_tick(vec![crate::net::packet::PacketFrame::default()]);
+            terminal.draw(|frame| draw(frame, &mut app)).unwrap();
+        }
     }
 }
