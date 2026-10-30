@@ -4,7 +4,7 @@
 
 # ntap [![Crates.io][crates-badge]][crates-url] ![License][license-badge]
 
-ntap is a cross-platform terminal network traffic monitor and packet inspector for Linux, macOS, and Windows. It combines live traffic totals, remote hosts, connections, process attribution, and bounded packet inspection in a keyboard-driven TUI.
+ntap is a terminal network traffic monitor and packet capture tool for Linux, macOS, and Windows. Monitor traffic by host, connection, or process, inspect packets, and save captures in PCAPNG format.
 
 ## Commands
 
@@ -28,9 +28,17 @@ Global capture filters may be placed before or after a subcommand:
 -r, --tickrate <duration_ms>   UI refresh period from 16 through 60000 ms
 ```
 
-Supported protocol names are `arp`, `rarp`, `aarp`, `ipv4`, `ipv6`, `vlan`, `mpls`, `wakeonlan`, `rldp`, `lldp`, `icmp`, `icmpv6`, `tcp`, and `udp`. Protocol names are case-insensitive. Unknown values and unavailable interfaces are rejected at startup.
+Supported protocol names are `arp`, `rarp`, `aarp`, `ipv4`, `ipv6`, `vlan`, `mpls`, `wakeonlan`, `rldp`, `lldp`, `icmp`, `icmpv6`, `tcp`, and `udp`. Protocol names are case-insensitive. Unknown values and unavailable interfaces are rejected at startup. For example, `-P arp,tcp` captures ARP or TCP packets. IP and port filters further restrict the capture. Port filters require a TCP or UDP header and exclude non-initial IP fragments.
 
-Live mode accepts `-l, --limit <count>` to set the number of packet records retained in memory. The default is 255 and zero is rejected. Capture-to-UI buffering is bounded; ntap drops packets and records a warning when the consumer cannot keep up.
+Live mode accepts `-l, --limit <count>` to set the number of packets retained in memory (default: 255, minimum: 1). The footer shows packets dropped when the capture queue fills. This count excludes operating system and driver drops.
+
+### Recording
+
+Use `ntap live --write capture.pcapng` to save filtered packets for analysis in Wireshark or tcpdump. Files include interface names and link types, so captures can span multiple interfaces. Timestamps are recorded when ntap processes each packet; link headers may be normalized by the capture backend.
+
+Existing files are never overwritten. New files use owner-only permissions on Unix. Recording continues while the display is paused, regardless of `--limit`. Disk errors stop the session; normal exit flushes queued packets to the file. Packets dropped from the capture queue are also missing from the recording.
+
+Files grow until capture stops. Automatic file rotation and offline replay are not supported.
 
 ### Examples
 
@@ -43,6 +51,9 @@ ntap monitor -i en0 -P tcp,udp
 
 # Inspect HTTPS traffic and retain the latest 500 packet records
 ntap -p 443 live --limit 500
+
+# Record a filtered capture for later analysis
+ntap live -i en0 -P tcp --write session.pcapng
 
 # List interfaces before choosing a capture target
 ntap interfaces
@@ -87,7 +98,7 @@ Install a prebuilt release on Windows PowerShell:
 irm https://github.com/shellrow/ntap/releases/latest/download/ntap-installer.ps1 | iex
 ```
 
-Build from source:
+Build from source with Rust 1.94 or newer:
 
 ```sh
 git clone https://github.com/shellrow/ntap
@@ -107,7 +118,7 @@ sudo setcap 'cap_sys_ptrace,cap_dac_read_search,cap_net_raw,cap_net_admin+ep' "$
 ntap
 ```
 
-Alternatively, run `sudo ntap` where requiring privilege escalation for every capture is preferable.
+Alternatively, run `sudo ntap`.
 
 ### macOS
 
@@ -125,7 +136,7 @@ Install [Npcap](https://npcap.com/#download) with WinPcap API-compatible mode en
 
 ## Configuration and Logging
 
-ntap creates `~/.ntap/ntap-config.json` on first monitor or live run. Missing fields receive defaults so configurations remain forward-compatible. Invalid JSON or unsafe timing values produce an actionable startup error rather than overwriting the file.
+ntap creates `~/.ntap/ntap-config.json` on the first monitor or live run. Missing fields use their defaults. Invalid JSON or out-of-range values prevent startup; the configuration file is left unchanged.
 
 ```json
 {
@@ -155,7 +166,16 @@ Logs are appended to the configured file and filtered by `DEBUG`, `INFO`, `WARN`
 - `unknown or unavailable interface`: use the exact interface name shown by `ntap interfaces`.
 - `failed to capture on interface`: verify Linux capabilities, macOS BPF permissions, or the Windows Npcap installation.
 - Missing process names: process attribution may require `cap_sys_ptrace` and `cap_dac_read_search` on Linux or elevated privileges on other platforms.
-- Terminal display corruption after an external hard kill cannot be intercepted; run `reset` or `stty sane`. Normal exits, Ctrl-C, and runtime errors restore the terminal automatically.
+- If the terminal is left in an unusable state after a forced termination, run `reset` or `stty sane`.
+- Monitor and live modes require an interactive terminal on both stdin and stdout.
+
+## Traffic Accounting
+
+Monitor totals cover observed local IP traffic. Host and connection lists each hold up to 16,384 entries; totals continue to accumulate when these limits are reached. Inactive entries expire after `entry_ttl` milliseconds. Pausing freezes the display while traffic totals continue to accumulate.
+
+Capturing on overlapping physical and tunnel interfaces can count the same traffic more than once. Select specific interfaces when comparing totals with another tool.
+
+Process names come from periodic OS socket snapshots. Short-lived connections, reused ports, shared sockets, and insufficient privileges can cause missing or ambiguous process information. DNS names are cached and may become stale during long sessions.
 
 ## Privacy and Security
 
@@ -163,7 +183,7 @@ Live mode displays packet payload previews, which may contain credentials, token
 
 ## Development
 
-The required local gates are:
+Run the checks:
 
 ```sh
 cargo fmt --all -- --check
@@ -173,7 +193,7 @@ cargo clippy --all-targets -- -D warnings
 cargo audit
 ```
 
-CI keeps pull-request feedback lightweight by running formatting, Clippy, and locked tests in one Linux job. Before a release, run the same checks on supported platforms and perform the RustSec audit locally. Releases and publishing are intentionally manual.
+CI runs formatting, Clippy, and tests on Linux, macOS, and Windows.
 
 ## License
 
