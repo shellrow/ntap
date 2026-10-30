@@ -312,20 +312,25 @@ fn draw_packet_detail(f: &mut Frame, app: &App, area: Rect) {
     let mut lines: Vec<Line<'_>> = Vec::new();
     if let Some(packet) = selected_packet(app) {
         lines.push(Line::raw(format!(
-            "No={} Iface={} Time={}",
-            packet.capture_no, packet.if_name, packet.timestamp
+            "No={} Iface={} Time={} Len={}",
+            packet.capture_no, packet.if_name, packet.timestamp, packet.packet_len
         )));
-        lines.push(Line::raw(format!(
-            "Source={}  Destination={}",
-            packet.get_src_addr(),
-            packet.get_dst_addr()
-        )));
-        lines.push(Line::raw(format!(
-            "Proto={} Len={} {}",
-            packet.get_protocol(),
-            packet.packet_len,
-            packet_info(packet)
-        )));
+        if let Some(datalink) = &packet.datalink {
+            if let Some(eth) = &datalink.ethernet {
+                lines.push(Line::raw(format!(
+                    "Ethernet: {} -> {} type={}",
+                    eth.source,
+                    eth.destination,
+                    eth.ethertype.name()
+                )));
+            }
+            if let Some(arp) = &datalink.arp {
+                lines.push(Line::raw(format!(
+                    "ARP: {} -> {}",
+                    arp.sender_proto_addr, arp.target_proto_addr
+                )));
+            }
+        }
 
         if let Some(ip) = &packet.ip {
             if let Some(ipv4) = &ip.ipv4 {
@@ -369,21 +374,9 @@ fn draw_packet_detail(f: &mut Frame, app: &App, area: Rect) {
             }
         }
 
-        if let Some(datalink) = &packet.datalink {
-            if let Some(eth) = &datalink.ethernet {
-                lines.push(Line::raw(format!(
-                    "Ethernet: {} -> {} type={}",
-                    eth.source,
-                    eth.destination,
-                    eth.ethertype.name()
-                )));
-            }
-            if let Some(arp) = &datalink.arp {
-                lines.push(Line::raw(format!(
-                    "ARP: {} -> {}",
-                    arp.sender_proto_addr, arp.target_proto_addr
-                )));
-            }
+        let app_hint = packet_app_hint(packet);
+        if !app_hint.is_empty() {
+            lines.push(Line::raw(format!("Application: {app_hint}")));
         }
 
         lines.push(Line::raw(format!(

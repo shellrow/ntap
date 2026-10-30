@@ -1,5 +1,6 @@
 use crate::sys;
 use bytes::Bytes;
+use futures::FutureExt;
 use nex::packet::ethernet::EtherType;
 use nex::packet::frame::{DatalinkLayer, IpLayer, TransportLayer};
 use nex::packet::ip::IpNextProtocol;
@@ -7,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
+use tokio::sync::Notify;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PacketFrame {
@@ -138,6 +140,7 @@ impl PacketFrame {
 }
 
 pub struct PacketStorage {
+    updates: Notify,
     storage: Arc<RwLock<VecDeque<PacketFrame>>>,
     capture_counter: Arc<AtomicUsize>,
     max_capacity: usize,
@@ -146,6 +149,7 @@ pub struct PacketStorage {
 impl PacketStorage {
     pub fn with_capacity(capacity: usize) -> Self {
         PacketStorage {
+            updates: Notify::new(),
             storage: Arc::new(RwLock::new(VecDeque::new())),
             capture_counter: Arc::new(AtomicUsize::new(1)),
             max_capacity: capacity.max(1),
@@ -174,9 +178,18 @@ impl PacketStorage {
                 storage.push_back(packet);
             }
         }
+        self.updates.notify_one();
+    }
+
+    /// Wait for a storage update. Notifications coalesce for the single live UI consumer.
+    pub async fn updated(&self) {
+        self.updates.notified().await;
     }
 
     pub fn get_packets(&self) -> Vec<PacketFrame> {
+        // Clear earlier notifications before taking the snapshot. An arrival during
+        // or after the snapshot leaves a notification for the next frame.
+        let _ = self.updates.notified().now_or_never();
         match self.storage.read() {
             Ok(storage) => storage.iter().cloned().collect(),
             Err(e) => {
@@ -250,5 +263,19 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(packet.get_time(), "07:08:09.123");
+    }
+    #[tokio::test]
+    async fn arrivals_before_waiting_are_retained_and_bursts_coalesce() {
+        let storage = PacketStorage::with_capacity(10);
+        for id in 1..=5 {
+            storage.add_packet(packet(id));
+        }
+        assert!(storage.updated().now_or_never().is_some());
+        assert!(storage.updated().now_or_never().is_none());
+        storage.add_packet(packet(6));
+        assert_eq!(storage.get_packets().len(), 6);
+        assert!(storage.updated().now_or_never().is_none());
+        storage.add_packet(packet(7));
+        assert!(storage.updated().now_or_never().is_some());
     }
 }

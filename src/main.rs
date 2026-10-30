@@ -56,7 +56,7 @@ struct Cli {
         global = true
     )]
     ports: Vec<u16>,
-    /// Set the UI refresh period in milliseconds.
+    /// Set the monitor refresh period in milliseconds (does not affect live mode).
     #[arg(
         short = 'r',
         long = "tickrate",
@@ -123,7 +123,6 @@ fn to_live_options(cli: &Cli, cmd: &LiveArgs) -> handler::live::LiveOptions {
         protocols: cli.protocols.clone(),
         ips: cli.ips.clone(),
         ports: cli.ports.clone(),
-        tickrate: cli.tickrate,
         limit: cmd.limit,
         write: cmd.write.clone(),
     }

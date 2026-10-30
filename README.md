@@ -25,10 +25,12 @@ Global capture filters may be placed before or after a subcommand:
 -P, --protocols <protocols>    Protocol names separated by commas
 -a, --ips <ips>                Local or remote IP addresses separated by commas
 -p, --ports <ports>            Local or remote ports separated by commas
--r, --tickrate <duration_ms>   UI refresh period from 16 through 60000 ms
+-r, --tickrate <duration_ms>   Monitor refresh period from 16 through 60000 ms
 ```
 
 Supported protocol names are `arp`, `rarp`, `aarp`, `ipv4`, `ipv6`, `vlan`, `mpls`, `wakeonlan`, `rldp`, `lldp`, `icmp`, `icmpv6`, `tcp`, and `udp`. Protocol names are case-insensitive. Unknown values and unavailable interfaces are rejected at startup. For example, `-P arp,tcp` captures ARP or TCP packets. IP and port filters further restrict the capture. Port filters require a TCP or UDP header and exclude non-initial IP fragments.
+
+Live mode updates on packet arrival, with rendering limited to 60 frames per second. Multiple arrivals between frames are displayed together. `--tickrate` and `display.tick_rate` apply only to Monitor mode.
 
 Live mode accepts `-l, --limit <count>` to set the number of packets retained in memory (default: 255, minimum: 1). The footer shows packets dropped when the capture queue fills. This count excludes operating system and driver drops.
 

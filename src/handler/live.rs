@@ -16,7 +16,6 @@ pub struct LiveOptions {
     pub protocols: Vec<String>,
     pub ips: Vec<IpAddr>,
     pub ports: Vec<u16>,
-    pub tickrate: Option<u64>,
     pub limit: Option<usize>,
     pub write: Option<std::path::PathBuf>,
 }
@@ -32,9 +31,6 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
     let mut config = AppConfig::load()?;
     crate::log::init_logger(&config)?;
 
-    if let Some(tick_rate) = opts.tickrate {
-        config.display.tick_rate = tick_rate;
-    }
     if !opts.interfaces.is_empty() {
         config.network.interfaces = opts.interfaces.clone();
     }

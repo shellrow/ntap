@@ -155,8 +155,8 @@ pub struct DisplayConfig {
     pub top_remote_hosts: usize,
     /// The number of connections to display in the Overview tab.
     pub connection_count: usize,
-    /// The tick rate in milliseconds. Default is 1000.
-    /// This is the default rate at which the UI will update.
+    /// Monitor refresh period in milliseconds. Default is 1000.
+    /// Live mode updates on packet arrival, independently of this value.
     pub tick_rate: u64,
     /// Show traffic as total or bandwidth.
     /// true: bandwidth, false: total.
