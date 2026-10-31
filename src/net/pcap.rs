@@ -38,6 +38,8 @@ pub struct PacketCaptureOptions {
 
 fn datalink_config(options: &PacketCaptureOptions) -> nex::datalink::Config {
     let mut config = nex::datalink::Config::default();
+    // Leave room for full-size IP packets, jumbo frames, and backend record headers.
+    config.read_buffer_size = 256 * 1024;
     config.read_timeout = Some(options.read_timeout);
     config.promiscuous = options.promiscuous;
     config
@@ -385,5 +387,14 @@ mod tests {
         options.src_ips.clear();
         options.ip_protocols.insert(IpNextProtocol::Tcp);
         assert!(!filter_packet(&frame, &options));
+    }
+    #[test]
+    fn receive_buffer_preserves_large_datagrams() {
+        let config = datalink_config(&PacketCaptureOptions::new());
+        let mut udp = vec![0x5a; 60_008];
+        udp[..8].copy_from_slice(&[0, 53, 0, 80, 0xea, 0x68, 0, 0]);
+        let frame = ipv4(17, &udp, true);
+        assert!(config.read_buffer_size >= frame.packet_len + 256);
+        assert_eq!(frame.payload.len(), 60_000);
     }
 }
