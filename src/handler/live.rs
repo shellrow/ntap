@@ -68,7 +68,7 @@ pub async fn live_capture(opts: LiveOptions) -> Result<()> {
             writer.register_interface(
                 interface.index,
                 &interface.name,
-                cfg!(target_os = "linux") && interface.is_tun(),
+                crate::net::pcap::records_raw_ip(interface),
             )?;
         }
     }

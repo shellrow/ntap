@@ -45,6 +45,42 @@ fn datalink_config(options: &PacketCaptureOptions) -> nex::datalink::Config {
     config
 }
 
+/// Keep OS interface names in the UI and recordings; translate only at channel open.
+fn capture_interface(interface: &Interface) -> Interface {
+    #[allow(unused_mut)]
+    let mut capture = interface.clone();
+    #[cfg(windows)]
+    if interface.is_loopback() {
+        // nex adds the \\Device\\NPF_ prefix when opening the adapter.
+        capture.name = "Loopback".to_string();
+    }
+    capture
+}
+
+pub fn records_raw_ip(interface: &Interface) -> bool {
+    (cfg!(target_os = "linux") && interface.is_tun()) || (cfg!(windows) && interface.is_loopback())
+}
+
+#[cfg(any(windows, test))]
+fn npcap_loopback_ip(packet: &[u8]) -> Option<&[u8]> {
+    // Npcap DLT_NULL uses a four-byte host-order family: 2 (IPv4), 24 (IPv6).
+    // Strip it for parsing and RAW PCAPNG recording, preserving the entire IP packet.
+    let family = u32::from_le_bytes(packet.get(..4)?.try_into().ok()?);
+    let ip = packet.get(4..)?;
+    match (family, ip.first().map(|byte| byte >> 4)) {
+        (2, Some(4)) | (24, Some(6)) => Some(ip),
+        _ => None,
+    }
+}
+
+fn capture_bytes<'a>(packet: &'a [u8], _interface: &Interface) -> Option<&'a [u8]> {
+    #[cfg(windows)]
+    if _interface.is_loopback() {
+        return npcap_loopback_ip(packet);
+    }
+    Some(packet)
+}
+
 impl PacketCaptureOptions {
     pub fn new() -> PacketCaptureOptions {
         PacketCaptureOptions {
@@ -70,7 +106,7 @@ pub fn start_live_capture(
     ready: Sender<Result<(), String>>,
 ) {
     let config = datalink_config(&capture_options);
-    let (mut _tx, mut rx) = match nex::datalink::channel(&interface, config) {
+    let (mut _tx, mut rx) = match nex::datalink::channel(&capture_interface(&interface), config) {
         Ok(nex::datalink::Channel::Ethernet(tx, rx)) => {
             let _ = ready.send(Ok(()));
             (tx, rx)
@@ -115,12 +151,14 @@ pub fn start_live_capture(
                     break;
                 }
             };
-            let mut parse_option: ParseOption = ParseOption::default();
-            // nex normalizes BPF and Npcap link headers to Ethernet. Linux TUN
-            // devices still expose raw IP through AF_PACKET.
-            if cfg!(target_os = "linux") && interface.is_tun() {
-                parse_option.from_ip_packet = true;
-            }
+            let Some(packet) = capture_bytes(packet, &interface) else {
+                tracing::debug!("ignored an unsupported or malformed link header");
+                continue;
+            };
+            let parse_option = ParseOption {
+                from_ip_packet: records_raw_ip(&interface),
+                ..Default::default()
+            };
             let frame: Frame = match Frame::from_buf(packet, parse_option) {
                 Some(frame) => frame,
                 None => {
@@ -133,7 +171,7 @@ pub fn start_live_capture(
                     PacketFrame::from_nex_frame(0, interface.index, interface.name.clone(), frame);
                 if capture_options.record {
                     packet_frame.raw_data = bytes::Bytes::copy_from_slice(packet);
-                    packet_frame.raw_ip = cfg!(target_os = "linux") && interface.is_tun();
+                    packet_frame.raw_ip = records_raw_ip(&interface);
                 }
                 match msg_tx.try_send(packet_frame) {
                     Ok(()) => {}
@@ -158,7 +196,7 @@ pub fn start_background_capture(
     ready: Sender<Result<(), String>>,
 ) {
     let config = datalink_config(&capture_options);
-    let (mut _tx, mut rx) = match nex::datalink::channel(&interface, config) {
+    let (mut _tx, mut rx) = match nex::datalink::channel(&capture_interface(&interface), config) {
         Ok(nex::datalink::Channel::Ethernet(tx, rx)) => {
             let _ = ready.send(Ok(()));
             (tx, rx)
@@ -203,12 +241,14 @@ pub fn start_background_capture(
                     break;
                 }
             };
-            let mut parse_option: ParseOption = ParseOption::default();
-            // nex normalizes BPF and Npcap link headers to Ethernet. Linux TUN
-            // devices still expose raw IP through AF_PACKET.
-            if cfg!(target_os = "linux") && interface.is_tun() {
-                parse_option.from_ip_packet = true;
-            }
+            let Some(packet) = capture_bytes(packet, &interface) else {
+                tracing::debug!("ignored an unsupported or malformed link header");
+                continue;
+            };
+            let parse_option = ParseOption {
+                from_ip_packet: records_raw_ip(&interface),
+                ..Default::default()
+            };
             let frame: Frame = match Frame::from_buf(packet, parse_option) {
                 Some(frame) => frame,
                 None => {
@@ -396,5 +436,39 @@ mod tests {
         let frame = ipv4(17, &udp, true);
         assert!(config.read_buffer_size >= frame.packet_len + 256);
         assert_eq!(frame.payload.len(), 60_000);
+    }
+
+    #[test]
+    fn npcap_loopback_headers_are_removed_without_truncating_ip_packets() {
+        for (family, version) in [(2u32, 0x45), (24, 0x60)] {
+            let mut packet = family.to_le_bytes().to_vec();
+            let mut ip = vec![0x5a; 16_000];
+            ip[0] = version;
+            packet.extend_from_slice(&ip);
+            assert_eq!(npcap_loopback_ip(&packet), Some(ip.as_slice()));
+        }
+        for malformed in [
+            &[][..],
+            &[2, 0, 0],
+            &[2, 0, 0, 0],
+            &[2, 0, 0, 0, 0x60],
+            &[99, 0, 0, 0, 0x45],
+        ] {
+            assert!(npcap_loopback_ip(malformed).is_none());
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_loopback_uses_npcap_name_but_retains_os_identity() {
+        let mut interface = Interface::dummy();
+        interface.name = "{OS-LOOPBACK-GUID}".to_string();
+        interface.flags = nex::net::interface::IFF_LOOPBACK;
+        assert_eq!(capture_interface(&interface).name, "Loopback");
+        assert_eq!(interface.name, "{OS-LOOPBACK-GUID}");
+        assert!(records_raw_ip(&interface));
+        interface.flags = 0;
+        assert_eq!(capture_interface(&interface).name, interface.name);
+        assert!(!records_raw_ip(&interface));
     }
 }
