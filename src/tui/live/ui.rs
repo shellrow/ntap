@@ -1,5 +1,5 @@
 use super::app::App;
-use nex::packet::dns::DnsPacket;
+use hickory_resolver::proto::op::{Message, MessageType};
 use nex::packet::tcp::TcpFlags;
 use ratatui::{prelude::*, widgets::*};
 
@@ -175,24 +175,30 @@ fn http_host(payload: &[u8]) -> Option<String> {
     None
 }
 
-fn dns_hint(payload: bytes::Bytes) -> Option<String> {
-    let dns = DnsPacket::try_from_buf(&payload).ok()?;
-    if let Some(query) = dns.queries.first()
-        && let Ok(name) = query.qname_parsed()
-    {
-        return Some(format!("DNS query {}", name));
+fn dns_hint(payload: &[u8], tcp: bool) -> Option<String> {
+    let payload = if tcp {
+        let length = u16::from_be_bytes(payload.get(..2)?.try_into().ok()?) as usize;
+        // Inspect only a complete DNS message present in this segment. Stream
+        // reassembly is required for messages split across TCP segments.
+        payload.get(2..2 + length)?
+    } else {
+        payload
+    };
+    let dns = Message::from_vec(payload).ok()?;
+    if dns.metadata.message_type == MessageType::Response {
+        return Some(format!("DNS response {} record(s)", dns.answers.len()));
     }
-    if !dns.responses.is_empty() {
-        return Some(format!("DNS response {} record(s)", dns.responses.len()));
-    }
-    Some("DNS".to_string())
+    dns.queries
+        .first()
+        .map(|query| format!("DNS query {}", query.name))
+        .or_else(|| Some("DNS".to_string()))
 }
 
 fn packet_app_hint(packet: &crate::net::packet::PacketFrame) -> String {
     if let Some(transport) = &packet.transport {
         if let Some(udp) = &transport.udp
             && (udp.source == 53 || udp.destination == 53)
-            && let Some(hint) = dns_hint(packet.payload.clone())
+            && let Some(hint) = dns_hint(&packet.payload, false)
         {
             return hint;
         }
@@ -202,7 +208,7 @@ fn packet_app_hint(packet: &crate::net::packet::PacketFrame) -> String {
                 return String::new();
             }
             if (tcp.source == 53 || tcp.destination == 53)
-                && let Some(hint) = dns_hint(packet.payload.clone())
+                && let Some(hint) = dns_hint(&packet.payload, true)
             {
                 return hint;
             }
@@ -452,5 +458,48 @@ mod tests {
             app.on_tick(vec![crate::net::packet::PacketFrame::default()]);
             terminal.draw(|frame| draw(frame, &mut app)).unwrap();
         }
+    }
+    fn dns_message(response: bool) -> Vec<u8> {
+        let mut bytes = vec![
+            0,
+            1,
+            if response { 0x81 } else { 1 },
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ];
+        bytes.extend_from_slice(b"\x07example\x03com\x00\x00\x01\x00\x01");
+        bytes
+    }
+
+    #[test]
+    fn dns_responses_with_questions_are_not_labeled_as_queries() {
+        assert_eq!(
+            dns_hint(&dns_message(false), false).as_deref(),
+            Some("DNS query example.com.")
+        );
+        assert_eq!(
+            dns_hint(&dns_message(true), false).as_deref(),
+            Some("DNS response 0 record(s)")
+        );
+    }
+
+    #[test]
+    fn tcp_dns_requires_a_complete_length_prefixed_message() {
+        let message = dns_message(true);
+        let mut tcp = (message.len() as u16).to_be_bytes().to_vec();
+        tcp.extend_from_slice(&message);
+        assert_eq!(
+            dns_hint(&tcp, true).as_deref(),
+            Some("DNS response 0 record(s)")
+        );
+        assert!(dns_hint(&tcp[..tcp.len() - 1], true).is_none());
+        assert!(dns_hint(&tcp[..1], true).is_none());
     }
 }
