@@ -61,7 +61,7 @@ async fn run_app<B: Backend>(
                 last_sample = now;
             }
             _ = clear_tick.tick() => {
-                app.netstat_data.remove_old_entries(entry_ttl);
+                app.expire_entries(entry_ttl);
             }
             maybe_event = events.next() => {
                 match maybe_event {

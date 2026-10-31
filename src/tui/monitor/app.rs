@@ -103,6 +103,8 @@ impl App {
                 .remove_old_entries(Duration::from_millis(self.config.network.entry_ttl));
             return;
         }
+        self.netstat_data
+            .remove_old_entries(Duration::from_millis(self.config.network.entry_ttl));
         if !self.pending_duration.is_zero() {
             self.netstat_data.merge(
                 std::mem::replace(&mut self.pending_data, NetStatData::new()),
@@ -111,6 +113,19 @@ impl App {
             self.pending_duration = Duration::ZERO;
         }
         self.netstat_data.merge(netstat_data, tick_rate);
+        self.refresh_lists();
+    }
+
+    pub fn expire_entries(&mut self, ttl: Duration) {
+        if self.should_pause {
+            self.pending_data.remove_old_entries(ttl);
+        } else {
+            self.netstat_data.remove_old_entries(ttl);
+            self.refresh_lists();
+        }
+    }
+
+    fn refresh_lists(&mut self) {
         self.remote_hosts = self
             .netstat_data
             .get_remote_hosts(Some(self.config.display.top_remote_hosts));
@@ -144,5 +159,24 @@ mod tests {
         app.on_tick(traffic(50), Duration::from_millis(500));
         assert_eq!(app.netstat_data.traffic.bytes_received, 650);
         assert_eq!(app.netstat_data.traffic.ingress_bytes_per_sec, 100);
+    }
+    #[test]
+    fn expiration_refreshes_visible_lists_without_waiting_for_a_sample() {
+        use crate::net::host::RemoteHostInfo;
+        let mut app = App::new("test".into(), AppConfig::default());
+        let ip = "192.0.2.1".parse().unwrap();
+        let mut host = RemoteHostInfo::new(String::new(), ip, String::new());
+        host.traffic_info.record(Direction::Ingress, 100);
+        host.traffic_info.last_seen = std::time::SystemTime::now() - Duration::from_secs(10);
+        app.netstat_data.remote_hosts.insert(ip, host);
+        app.refresh_lists();
+        assert_eq!(app.remote_hosts.len(), 1);
+        app.should_pause = true;
+        app.expire_entries(Duration::from_secs(1));
+        assert_eq!(app.remote_hosts.len(), 1);
+        app.should_pause = false;
+        app.expire_entries(Duration::from_secs(1));
+        assert!(app.remote_hosts.is_empty());
+        assert!(app.netstat_data.remote_hosts.is_empty());
     }
 }
