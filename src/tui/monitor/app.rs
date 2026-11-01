@@ -38,6 +38,8 @@ pub struct App {
     pub show_bandwidth: bool,
     pub selected_tab: FocusTab,
     pub netstat_data: NetStatData,
+    pending_data: NetStatData,
+    pending_duration: Duration,
     pub remote_hosts: Vec<HostDisplayInfo>,
     pub processes: Vec<ProcessDisplayInfo>,
     pub connections: Vec<SocketDisplayInfo>,
@@ -53,6 +55,8 @@ impl App {
             show_bandwidth: config.display.show_bandwidth,
             selected_tab: FocusTab::Overview,
             netstat_data: NetStatData::new(),
+            pending_data: NetStatData::new(),
+            pending_duration: Duration::ZERO,
             remote_hosts: vec![],
             processes: vec![],
             connections: vec![],
@@ -83,7 +87,7 @@ impl App {
     }
 
     pub fn on_key(&mut self, c: char) {
-        match c {
+        match c.to_ascii_lowercase() {
             'q' => self.should_quit = true,
             ' ' => self.should_pause = !self.should_pause,
             't' => self.show_bandwidth = !self.show_bandwidth,
@@ -91,11 +95,88 @@ impl App {
         }
     }
 
-    pub fn on_tick(&mut self, netstat_data: NetStatData) {
-        let tick_rate = Duration::from_millis(self.config.display.tick_rate);
+    pub fn on_tick(&mut self, netstat_data: NetStatData, tick_rate: Duration) {
+        if self.should_pause {
+            self.pending_data.merge(netstat_data, tick_rate);
+            self.pending_duration = self.pending_duration.saturating_add(tick_rate);
+            self.pending_data
+                .remove_old_entries(Duration::from_millis(self.config.network.entry_ttl));
+            return;
+        }
+        self.netstat_data
+            .remove_old_entries(Duration::from_millis(self.config.network.entry_ttl));
+        if !self.pending_duration.is_zero() {
+            self.netstat_data.merge(
+                std::mem::replace(&mut self.pending_data, NetStatData::new()),
+                self.pending_duration,
+            );
+            self.pending_duration = Duration::ZERO;
+        }
         self.netstat_data.merge(netstat_data, tick_rate);
-        self.remote_hosts = self.netstat_data.get_remote_hosts(None);
-        self.connections = self.netstat_data.get_connections(None);
-        self.processes = self.netstat_data.get_processes(None);
+        self.refresh_lists();
+    }
+
+    pub fn expire_entries(&mut self, ttl: Duration) {
+        if self.should_pause {
+            self.pending_data.remove_old_entries(ttl);
+        } else {
+            self.netstat_data.remove_old_entries(ttl);
+            self.refresh_lists();
+        }
+    }
+
+    fn refresh_lists(&mut self) {
+        self.remote_hosts = self
+            .netstat_data
+            .get_remote_hosts(Some(self.config.display.top_remote_hosts));
+        self.connections = self
+            .netstat_data
+            .get_connections(Some(self.config.display.connection_count));
+        self.processes = self
+            .netstat_data
+            .get_processes(Some(self.config.display.connection_count));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::net::traffic::Direction;
+    fn traffic(bytes: usize) -> NetStatData {
+        let mut data = NetStatData::new();
+        data.traffic.record(Direction::Ingress, bytes);
+        data
+    }
+    #[test]
+    fn pause_preserves_totals_and_resume_uses_current_interval_rate() {
+        let mut app = App::new("test".into(), AppConfig::default());
+        app.on_tick(traffic(100), Duration::from_secs(1));
+        app.on_key(' ');
+        app.on_tick(traffic(200), Duration::from_secs(2));
+        app.on_tick(traffic(300), Duration::from_secs(2));
+        assert_eq!(app.netstat_data.traffic.bytes_received, 100);
+        app.on_key(' ');
+        app.on_tick(traffic(50), Duration::from_millis(500));
+        assert_eq!(app.netstat_data.traffic.bytes_received, 650);
+        assert_eq!(app.netstat_data.traffic.ingress_bytes_per_sec, 100);
+    }
+    #[test]
+    fn expiration_refreshes_visible_lists_without_waiting_for_a_sample() {
+        use crate::net::host::RemoteHostInfo;
+        let mut app = App::new("test".into(), AppConfig::default());
+        let ip = "192.0.2.1".parse().unwrap();
+        let mut host = RemoteHostInfo::new(String::new(), ip, String::new());
+        host.traffic_info.record(Direction::Ingress, 100);
+        host.traffic_info.last_seen = std::time::SystemTime::now() - Duration::from_secs(10);
+        app.netstat_data.remote_hosts.insert(ip, host);
+        app.refresh_lists();
+        assert_eq!(app.remote_hosts.len(), 1);
+        app.should_pause = true;
+        app.expire_entries(Duration::from_secs(1));
+        assert_eq!(app.remote_hosts.len(), 1);
+        app.should_pause = false;
+        app.expire_entries(Duration::from_secs(1));
+        assert!(app.remote_hosts.is_empty());
+        assert!(app.netstat_data.remote_hosts.is_empty());
     }
 }

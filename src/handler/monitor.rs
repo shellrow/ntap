@@ -1,12 +1,13 @@
 use crate::config::AppConfig;
-use crate::net::stat::NetStatStrage;
+use crate::net::stat::NetStatStorage;
 use anyhow::Result;
 use nex::packet::ethernet::EtherType;
 use nex::packet::ip::IpNextProtocol;
 use std::collections::HashSet;
 use std::net::IpAddr;
-use std::sync::Arc;
-use std::thread;
+use std::sync::mpsc::channel;
+use std::sync::{Arc, atomic::AtomicBool};
+use std::time::Duration;
 
 #[derive(Debug, Clone, Default)]
 pub struct MonitorOptions {
@@ -15,26 +16,25 @@ pub struct MonitorOptions {
     pub ips: Vec<IpAddr>,
     pub ports: Vec<u16>,
     pub tickrate: Option<u64>,
-    pub enhanced_graphics: bool,
 }
 
 pub async fn monitor(opts: MonitorOptions) -> Result<()> {
+    crate::tui::terminal::ensure_terminal()?;
     if crate::sys::get_config_dir_path().is_none() {
         anyhow::bail!("Could not get config directory path");
     }
 
-    crate::sys::check_deps().map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    crate::sys::check_deps()?;
 
-    let mut config = AppConfig::load();
+    let mut config = AppConfig::load()?;
     crate::log::init_logger(&config)?;
-    crate::db::init_databases()?;
-
     if let Some(tick_rate) = opts.tickrate {
         config.display.tick_rate = tick_rate;
     }
     if !opts.interfaces.is_empty() {
         config.network.interfaces = opts.interfaces.clone();
     }
+    config.validate()?;
 
     let mut ethertypes: HashSet<EtherType> = HashSet::new();
     let mut ip_next_protocols: HashSet<IpNextProtocol> = HashSet::new();
@@ -51,59 +51,72 @@ pub async fn monitor(opts: MonitorOptions) -> Result<()> {
     let ips: HashSet<IpAddr> = opts.ips.iter().copied().collect();
     let ports: HashSet<u16> = opts.ports.iter().copied().collect();
 
-    if !ip_next_protocols.is_empty() || !ips.is_empty() || !ports.is_empty() {
-        ethertypes.insert(EtherType::Ipv4);
-        ethertypes.insert(EtherType::Ipv6);
-        if !ports.is_empty() {
-            ip_next_protocols.insert(IpNextProtocol::Tcp);
-            ip_next_protocols.insert(IpNextProtocol::Udp);
-        }
-    }
+    let netstat_storage: Arc<NetStatStorage> = Arc::new(NetStatStorage::new());
+    let mut netstat_storage_socket = Arc::clone(&netstat_storage);
+    let mut netstat_storage_ui = Arc::clone(&netstat_storage);
 
-    let netstat_strage: Arc<NetStatStrage> = Arc::new(NetStatStrage::new());
-    let mut netstat_strage_socket = Arc::clone(&netstat_strage);
-    let mut netstat_strage_ui = Arc::clone(&netstat_strage);
-
-    let target_interfaces = if config.network.interfaces.is_empty() {
-        crate::net::interface::get_usable_interfaces()
-    } else {
-        crate::net::interface::get_interfaces_by_name(&config.network.interfaces)
-    };
+    let target_interfaces =
+        crate::net::interface::resolve_capture_interfaces(&config.network.interfaces)?;
+    let stop = Arc::new(AtomicBool::new(false));
+    let mut workers = crate::util::WorkerSet::new(Arc::clone(&stop));
+    let (ready_tx, ready_rx) = channel();
 
     for iface in target_interfaces {
-        let mut netstat_strage_pcap = Arc::clone(&netstat_strage);
-        let mut pcap_option = crate::net::pcap::PacketCaptureOptions::from_interface(&iface);
+        let mut netstat_storage_pcap = Arc::clone(&netstat_storage);
+        let mut pcap_option = crate::net::pcap::PacketCaptureOptions::new();
         pcap_option.ether_types = ethertypes.clone();
         pcap_option.ip_protocols = ip_next_protocols.clone();
         pcap_option.src_ips = ips.clone();
         pcap_option.src_ports = ports.clone();
         pcap_option.dst_ips = ips.clone();
         pcap_option.dst_ports = ports.clone();
-        thread::Builder::new()
-            .name(format!("pcap-thread-{}", iface.name))
-            .spawn(move || {
-                crate::net::pcap::start_background_capture(
-                    pcap_option,
-                    &mut netstat_strage_pcap,
-                    iface,
-                );
-            })?;
+        let capture_stop = Arc::clone(&stop);
+        let ready_tx = ready_tx.clone();
+        workers.spawn(format!("pcap-thread-{}", iface.name), move || {
+            crate::net::pcap::start_background_capture(
+                pcap_option,
+                &mut netstat_storage_pcap,
+                iface,
+                &capture_stop,
+                ready_tx,
+            );
+        })?;
+    }
+    drop(ready_tx);
+    let mut startup_error = None;
+    for _ in 0..workers.worker_count() {
+        match ready_rx.recv_timeout(Duration::from_secs(5)) {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => {
+                startup_error = Some(error);
+                break;
+            }
+            Err(error) => {
+                startup_error = Some(format!("capture startup did not complete: {error}"));
+                break;
+            }
+        }
+    }
+    if let Some(error) = startup_error {
+        workers.shutdown();
+        anyhow::bail!(error);
     }
 
-    thread::Builder::new()
-        .name("socket-info-update".to_string())
-        .spawn(move || {
-            crate::net::socket::start_socket_info_update(&mut netstat_strage_socket);
-        })?;
+    let socket_stop = Arc::clone(&stop);
+    workers.spawn("socket-info-update".to_string(), move || {
+        crate::net::socket::start_socket_info_update(&mut netstat_storage_socket, &socket_stop);
+    })?;
 
-    let mut netstat_strage_dns = Arc::clone(&netstat_strage);
-    thread::Builder::new()
-        .name("dns-map-update".to_string())
-        .spawn(move || {
-            crate::net::dns::start_dns_map_update(&mut netstat_strage_dns);
+    if config.network.reverse_dns {
+        let mut netstat_storage_dns = Arc::clone(&netstat_storage);
+        let dns_stop = Arc::clone(&stop);
+        workers.spawn("dns-map-update".to_string(), move || {
+            crate::net::dns::start_dns_map_update(&mut netstat_storage_dns, &dns_stop);
         })?;
+    }
 
-    crate::tui::monitor::terminal::run(config, opts.enhanced_graphics, &mut netstat_strage_ui)
-        .await?;
-    Ok(())
+    let result =
+        crate::tui::monitor::terminal::run(config, &mut netstat_storage_ui, ready_rx).await;
+    workers.shutdown();
+    result
 }

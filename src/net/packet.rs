@@ -1,16 +1,24 @@
 use crate::sys;
 use bytes::Bytes;
+use futures::FutureExt;
 use nex::packet::ethernet::EtherType;
 use nex::packet::frame::{DatalinkLayer, IpLayer, TransportLayer};
 use nex::packet::ip::IpNextProtocol;
-use nex::packet::{arp, icmp};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
+use tokio::sync::Notify;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PacketFrame {
+    /// Original capture bytes, populated only while recording and cleared before storage.
+    #[serde(skip)]
+    pub raw_data: Bytes,
+    #[serde(skip)]
+    pub raw_ip: bool,
+    #[serde(skip)]
+    pub captured_at: std::time::Duration,
     /// Capture number.
     pub capture_no: usize,
     /// interface index
@@ -32,19 +40,6 @@ pub struct PacketFrame {
 }
 
 impl PacketFrame {
-    pub fn new() -> Self {
-        PacketFrame {
-            capture_no: 0,
-            if_index: 0,
-            if_name: String::new(),
-            datalink: None,
-            ip: None,
-            transport: None,
-            payload: Bytes::new(),
-            packet_len: 0,
-            timestamp: String::new(),
-        }
-    }
     pub fn from_nex_frame(
         capture_no: usize,
         if_index: u32,
@@ -52,6 +47,11 @@ impl PacketFrame {
         frame: nex::packet::frame::Frame,
     ) -> PacketFrame {
         PacketFrame {
+            raw_data: Bytes::new(),
+            raw_ip: false,
+            captured_at: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default(),
             capture_no,
             if_index,
             if_name,
@@ -64,37 +64,27 @@ impl PacketFrame {
         }
     }
     pub fn get_time(&self) -> String {
-        let datetime_vec: Vec<&str> = self.timestamp.split('T').collect::<Vec<&str>>();
-        let timestamp: String = if datetime_vec.len() > 1 {
-            datetime_vec[1].to_string()
-        } else {
-            self.timestamp.clone()
-        };
-        // Remove UTC offset that start from + or -
-        let datetime_vec = timestamp.split('+').collect::<Vec<&str>>();
-        if datetime_vec.len() > 1 {
-            datetime_vec[0].to_string()
-        } else {
-            timestamp
-        }
+        chrono::DateTime::parse_from_rfc3339(&self.timestamp)
+            .map(|timestamp| timestamp.format("%H:%M:%S%.3f").to_string())
+            .unwrap_or_else(|_| self.timestamp.clone())
     }
     // Get most high level protocol
     pub fn get_protocol(&self) -> String {
         // Transport layer
         if let Some(transport) = &self.transport {
-            if let Some(tcp) = &transport.tcp {
+            if let Some(_tcp) = &transport.tcp {
                 return "TCP".to_string();
             }
-            if let Some(udp) = &transport.udp {
+            if let Some(_udp) = &transport.udp {
                 return "UDP".to_string();
             }
         }
         // IP layer
         if let Some(ip) = &self.ip {
-            if let Some(icmp) = &ip.icmp {
+            if let Some(_icmp) = &ip.icmp {
                 return "ICMP".to_string();
             }
-            if let Some(icmpv6) = &ip.icmpv6 {
+            if let Some(_icmpv6) = &ip.icmpv6 {
                 return "ICMPv6".to_string();
             }
             if let Some(ipv4) = &ip.ipv4 {
@@ -106,7 +96,7 @@ impl PacketFrame {
         }
         // Datalink layer
         if let Some(datalink) = &self.datalink {
-            if let Some(arp) = &datalink.arp {
+            if let Some(_arp) = &datalink.arp {
                 return "ARP".to_string();
             }
             if let Some(ethernet) = &datalink.ethernet {
@@ -124,10 +114,10 @@ impl PacketFrame {
                 return ipv6.source.to_string();
             }
         }
-        if let Some(datalink) = &self.datalink {
-            if let Some(ethernet) = &datalink.ethernet {
-                return ethernet.source.to_string();
-            }
+        if let Some(datalink) = &self.datalink
+            && let Some(ethernet) = &datalink.ethernet
+        {
+            return ethernet.source.to_string();
         }
         "Unknown".to_string()
     }
@@ -140,73 +130,41 @@ impl PacketFrame {
                 return ipv6.destination.to_string();
             }
         }
-        if let Some(datalink) = &self.datalink {
-            if let Some(ethernet) = &datalink.ethernet {
-                return ethernet.destination.to_string();
-            }
+        if let Some(datalink) = &self.datalink
+            && let Some(ethernet) = &datalink.ethernet
+        {
+            return ethernet.destination.to_string();
         }
         "Unknown".to_string()
-    }
-    pub fn get_src_port(&self) -> String {
-        if let Some(transport) = &self.transport {
-            if let Some(tcp) = &transport.tcp {
-                return tcp.source.to_string();
-            }
-            if let Some(udp) = &transport.udp {
-                return udp.source.to_string();
-            }
-        }
-        String::new()
-    }
-    pub fn get_dst_port(&self) -> String {
-        if let Some(transport) = &self.transport {
-            if let Some(tcp) = &transport.tcp {
-                return tcp.destination.to_string();
-            }
-            if let Some(udp) = &transport.udp {
-                return udp.destination.to_string();
-            }
-        }
-        String::new()
     }
 }
 
 pub struct PacketStorage {
+    updates: Notify,
     storage: Arc<RwLock<VecDeque<PacketFrame>>>,
     capture_counter: Arc<AtomicUsize>,
     max_capacity: usize,
 }
 
 impl PacketStorage {
-    pub fn new() -> Self {
-        PacketStorage {
-            storage: Arc::new(RwLock::new(VecDeque::new())),
-            capture_counter: Arc::new(AtomicUsize::new(1)),
-            max_capacity: u8::MAX as usize,
-        }
-    }
-
     pub fn with_capacity(capacity: usize) -> Self {
         PacketStorage {
+            updates: Notify::new(),
             storage: Arc::new(RwLock::new(VecDeque::new())),
             capture_counter: Arc::new(AtomicUsize::new(1)),
-            max_capacity: capacity,
+            max_capacity: capacity.max(1),
         }
-    }
-
-    pub fn set_max_capacity(&mut self, max_capacity: usize) {
-        self.max_capacity = max_capacity;
     }
 
     pub fn generate_capture_no(&self) -> usize {
-        self.capture_counter.fetch_add(1, Ordering::SeqCst)
+        self.capture_counter.fetch_add(1, Ordering::Relaxed)
     }
 
     pub fn add_packet(&self, packet: PacketFrame) {
         match self.storage.write() {
             Ok(mut storage) => {
                 // If the storage is full, remove the oldest packet
-                if storage.len() == self.max_capacity {
+                while storage.len() >= self.max_capacity {
                     storage.pop_front();
                 }
                 storage.push_back(packet);
@@ -214,15 +172,24 @@ impl PacketStorage {
             Err(e) => {
                 tracing::error!("failed to lock packet storage for write: {}", e);
                 let mut storage = e.into_inner();
-                if storage.len() == self.max_capacity {
+                while storage.len() >= self.max_capacity {
                     storage.pop_front();
                 }
                 storage.push_back(packet);
             }
         }
+        self.updates.notify_one();
+    }
+
+    /// Wait for a storage update. Notifications coalesce for the single live UI consumer.
+    pub async fn updated(&self) {
+        self.updates.notified().await;
     }
 
     pub fn get_packets(&self) -> Vec<PacketFrame> {
+        // Clear earlier notifications before taking the snapshot. An arrival during
+        // or after the snapshot leaves a notification for the next frame.
+        let _ = self.updates.notified().now_or_never();
         match self.storage.read() {
             Ok(storage) => storage.iter().cloned().collect(),
             Err(e) => {
@@ -260,5 +227,55 @@ pub fn get_ip_next_protocol_from_str(protocol_name: &str) -> Option<IpNextProtoc
         "tcp" => Some(IpNextProtocol::Tcp),
         "udp" => Some(IpNextProtocol::Udp),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn packet(capture_no: usize) -> PacketFrame {
+        PacketFrame {
+            raw_data: Bytes::new(),
+            raw_ip: false,
+            captured_at: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default(),
+            capture_no,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn storage_never_accepts_an_unbounded_zero_capacity() {
+        let storage = PacketStorage::with_capacity(0);
+        storage.add_packet(packet(1));
+        storage.add_packet(packet(2));
+        let packets = storage.get_packets();
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].capture_no, 2);
+    }
+
+    #[test]
+    fn timestamp_display_handles_negative_offsets() {
+        let packet = PacketFrame {
+            timestamp: "2026-08-12T07:08:09.123-07:00".to_string(),
+            ..Default::default()
+        };
+        assert_eq!(packet.get_time(), "07:08:09.123");
+    }
+    #[tokio::test]
+    async fn arrivals_before_waiting_are_retained_and_bursts_coalesce() {
+        let storage = PacketStorage::with_capacity(10);
+        for id in 1..=5 {
+            storage.add_packet(packet(id));
+        }
+        assert!(storage.updated().now_or_never().is_some());
+        assert!(storage.updated().now_or_never().is_none());
+        storage.add_packet(packet(6));
+        assert_eq!(storage.get_packets().len(), 6);
+        assert!(storage.updated().now_or_never().is_none());
+        storage.add_packet(packet(7));
+        assert!(storage.updated().now_or_never().is_some());
     }
 }

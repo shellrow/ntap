@@ -1,14 +1,15 @@
-use crate::net::stat::NetStatStrage;
-use crate::net::traffic::{TrafficDisplayInfo, TrafficInfo};
+use crate::net::stat::NetStatStorage;
+use crate::net::traffic::TrafficDisplayInfo;
 use crate::process::ProcessInfo;
 use netsock::family::AddressFamilyFlags;
 use netsock::protocol::ProtocolFlags;
 use netsock::socket::ProtocolSocketInfo;
 use netsock::state::TcpState;
-use nex::packet::tcp::TcpFlags;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::collections::HashMap;
+#[cfg(test)]
+use std::net::Ipv4Addr;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord)]
@@ -56,22 +57,6 @@ impl SocketStatus {
             _ => SocketStatus::Unknown,
         }
     }
-    pub fn from_xenet_tcp_flags(flags: u8) -> Self {
-        // match is cause unreachable pattern. so use if-else.
-        if flags == TcpFlags::SYN {
-            SocketStatus::SynSent
-        } else if flags == TcpFlags::SYN | TcpFlags::ACK {
-            SocketStatus::SynReceived
-        } else if flags == TcpFlags::ACK {
-            SocketStatus::Established
-        } else if flags == TcpFlags::FIN | TcpFlags::ACK {
-            SocketStatus::Closing
-        } else if flags == TcpFlags::FIN {
-            SocketStatus::FinWait1
-        } else {
-            SocketStatus::Unknown
-        }
-    }
 }
 
 impl std::fmt::Display for SocketStatus {
@@ -107,6 +92,7 @@ pub struct SocketProcess {
 }
 
 impl SocketProcess {
+    #[cfg(test)]
     pub fn new() -> Self {
         SocketProcess {
             socket_addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0),
@@ -114,12 +100,6 @@ impl SocketProcess {
             status: SocketStatus::Unknown,
             process: None,
         }
-    }
-    pub fn merge(&mut self, other: &SocketProcess) {
-        self.socket_addr = other.socket_addr;
-        self.protocol = other.protocol;
-        self.status = other.status;
-        self.process = other.process.clone();
     }
 }
 
@@ -136,19 +116,6 @@ pub struct SocketInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SocketTrafficInfo {
-    pub interface_name: String,
-    pub local_ip_addr: IpAddr,
-    pub local_port: u16,
-    pub remote_ip_addr: Option<IpAddr>,
-    pub remote_port: Option<u16>,
-    pub protocol: TransportProtocol,
-    pub ip_version: AddressFamily,
-    pub process: Option<ProcessInfo>,
-    pub traffic: TrafficInfo,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SocketDisplayInfo {
     pub interface_name: String,
     pub local_ip_addr: IpAddr,
@@ -159,22 +126,6 @@ pub struct SocketDisplayInfo {
     pub ip_version: AddressFamily,
     pub process: Option<ProcessInfo>,
     pub traffic: TrafficDisplayInfo,
-}
-
-impl SocketDisplayInfo {
-    pub fn from_socket_traffic_info(socket_traffic_info: &SocketTrafficInfo) -> Self {
-        SocketDisplayInfo {
-            interface_name: socket_traffic_info.interface_name.clone(),
-            local_ip_addr: socket_traffic_info.local_ip_addr,
-            local_port: socket_traffic_info.local_port,
-            remote_ip_addr: socket_traffic_info.remote_ip_addr,
-            remote_port: socket_traffic_info.remote_port,
-            protocol: socket_traffic_info.protocol,
-            ip_version: socket_traffic_info.ip_version.clone(),
-            process: socket_traffic_info.process.clone(),
-            traffic: socket_traffic_info.traffic.to_display_info(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -199,50 +150,20 @@ impl TransportProtocol {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord, Copy)]
-pub struct ProtocolSocketAddress {
-    pub socket: SocketAddr,
-    pub protocol: TransportProtocol,
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord)]
 pub struct LocalSocket {
-    pub interface_name: String,
+    pub local_ip_addr: IpAddr,
     pub port: u16,
     pub protocol: TransportProtocol,
 }
 
 impl LocalSocket {
-    pub fn new(interface_name: String, port: u16, protocol: TransportProtocol) -> Self {
+    pub fn new(local_ip_addr: IpAddr, port: u16, protocol: TransportProtocol) -> Self {
         LocalSocket {
-            interface_name,
+            local_ip_addr,
             port,
             protocol,
         }
-    }
-    pub fn to_key_string(&self) -> String {
-        format!(
-            "{}-{}-{}",
-            self.interface_name,
-            self.port,
-            self.protocol.as_str()
-        )
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord, Copy)]
-pub struct ProtocolPort {
-    pub port: u16,
-    pub protocol: TransportProtocol,
-}
-
-impl ProtocolPort {
-    pub fn new(port: u16, protocol: TransportProtocol) -> Self {
-        ProtocolPort { port, protocol }
-    }
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_key_string(&self) -> String {
-        format!("{}-{}", self.port, self.protocol.as_str())
     }
 }
 
@@ -262,15 +183,6 @@ impl Default for SocketInfoOption {
 }
 
 impl SocketInfoOption {
-    pub fn new(
-        address_family: Vec<AddressFamily>,
-        transport_protocol: Vec<TransportProtocol>,
-    ) -> SocketInfoOption {
-        SocketInfoOption {
-            address_family,
-            transport_protocol,
-        }
-    }
     pub fn get_address_family_flags(&self) -> AddressFamilyFlags {
         let mut flags: AddressFamilyFlags = AddressFamilyFlags::empty();
         for af in &self.address_family {
@@ -367,60 +279,38 @@ pub fn get_sockets_info(opt: SocketInfoOption) -> Vec<SocketInfo> {
     sockets_info
 }
 
-pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
-    let mut local_ip_map: HashMap<IpAddr, String> = HashMap::new();
+pub fn start_socket_info_update(
+    netstat_storage: &mut Arc<NetStatStorage>,
+    stop: &std::sync::atomic::AtomicBool,
+) {
     loop {
-        if local_ip_map.is_empty() {
-            local_ip_map = netstat_strage.get_local_ip_map();
+        if stop.load(std::sync::atomic::Ordering::Acquire) {
+            break;
+        }
+        let local_ip_map = crate::net::interface::get_local_ip_map();
+        if let Ok(mut map) = netstat_storage.local_ip_map.lock() {
+            *map = local_ip_map.clone();
         }
         let sockets_info = get_sockets_info(SocketInfoOption::default());
-        // Create Vec<LocalSocket>
-        let mut local_sockets: HashSet<LocalSocket> = HashSet::new();
-        for si in &sockets_info {
-            if let Some(interface_name) = local_ip_map.get(&si.local_ip_addr) {
-                local_sockets.insert(LocalSocket::new(
-                    interface_name.to_owned(),
-                    si.local_port,
-                    si.protocol,
-                ));
-            }
+        let sockets: HashMap<LocalSocket, SocketProcess> = sockets_info
+            .into_iter()
+            .map(|socket| {
+                let key =
+                    LocalSocket::new(socket.local_ip_addr, socket.local_port, socket.protocol);
+                let process = SocketProcess {
+                    socket_addr: SocketAddr::new(socket.local_ip_addr, socket.local_port),
+                    protocol: socket.protocol,
+                    status: socket.status,
+                    process: socket.process,
+                };
+                (key, process)
+            })
+            .collect();
+        if let Ok(mut current) = netstat_storage.local_socket_map.lock() {
+            *current = sockets;
         }
-        // Lock the local_socket_map
-        let mut local_socket_inner = match netstat_strage.local_socket_map.try_lock() {
-            Ok(connections) => connections,
-            Err(e) => {
-                tracing::error!("[socket_info_update] lock error: {}", e);
-                std::thread::sleep(std::time::Duration::from_millis(25));
-                continue;
-            }
-        };
-        // Remove old socket info
-        let mut remove_keys: Vec<LocalSocket> = vec![];
-        for conn in local_socket_inner.iter() {
-            if !local_sockets.contains(conn.0) {
-                remove_keys.push(conn.0.clone());
-            }
+        if crate::util::wait_for_stop(stop, std::time::Duration::from_secs(10)) {
+            break;
         }
-        for key in remove_keys {
-            local_socket_inner.remove(&key);
-        }
-        // Update socket info
-        for socket_info in sockets_info {
-            if let Some(interface_name) = local_ip_map.get(&socket_info.local_ip_addr) {
-                let local_socket = LocalSocket::new(
-                    interface_name.to_owned(),
-                    socket_info.local_port,
-                    socket_info.protocol,
-                );
-                let socket_process = local_socket_inner
-                    .entry(local_socket)
-                    .or_insert(SocketProcess::new());
-                socket_process.status = socket_info.status;
-                socket_process.process = socket_info.process.clone();
-            }
-        }
-        // Drop the lock
-        drop(local_socket_inner);
-        std::thread::sleep(std::time::Duration::from_secs(10));
     }
 }

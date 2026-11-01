@@ -1,12 +1,14 @@
-#![allow(unused)]
-
 use crate::sys;
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
+use std::io::{ErrorKind, Write};
+use std::path::Path;
 
 pub const NTAP_CONFIG_FILE_NAME: &str = "ntap-config.json";
 pub const DEFAULT_LOG_FILE_PATH: &str = "ntap.log";
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
+#[serde(default)]
 pub struct AppConfig {
     /// Logging configuration.
     pub logging: LoggingConfig,
@@ -18,75 +20,69 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn new() -> AppConfig {
-        AppConfig {
-            logging: LoggingConfig::new(),
-            network: NetworkConfig::new(),
-            display: DisplayConfig::new(),
-        }
+        Self::default()
     }
-    pub fn load() -> AppConfig {
-        match sys::get_user_file_path(NTAP_CONFIG_FILE_NAME) {
-            Some(path) => {
-                match std::fs::read_to_string(&path) {
-                    Ok(content) => match serde_json::from_str(&content) {
-                        Ok(config) => config,
-                        Err(e) => {
-                            tracing::error!("{:?}", e);
-                            AppConfig::new()
-                        }
-                    },
-                    Err(e) => {
-                        tracing::error!("{:?}", e);
-                        // Create default config
-                        let config = AppConfig::new();
-                        config.save();
-                        config
-                    }
-                }
+    pub fn load() -> Result<AppConfig> {
+        let path = sys::get_user_file_path(NTAP_CONFIG_FILE_NAME)
+            .context("could not resolve the ntap configuration path")?;
+        match std::fs::read_to_string(&path) {
+            Ok(content) => {
+                let config: AppConfig = serde_json::from_str(&content)
+                    .with_context(|| format!("invalid configuration file: {}", path.display()))?;
+                config.validate()?;
+                Ok(config)
             }
-            None => {
-                // Create default config
+            Err(error) if error.kind() == ErrorKind::NotFound => {
                 let config = AppConfig::new();
-                config.save();
-                config
+                config.create_at(&path)?;
+                Ok(config)
             }
+            Err(error) => Err(error)
+                .with_context(|| format!("failed to read configuration: {}", path.display())),
         }
     }
-    pub fn save(&self) {
-        if let Some(path) = sys::get_user_file_path(NTAP_CONFIG_FILE_NAME) {
-            match serde_json::to_string_pretty(&self) {
-                Ok(content) => match std::fs::write(&path, content) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        tracing::error!("{:?}", e);
-                    }
-                },
-                Err(e) => {
-                    tracing::error!("{:?}", e);
-                }
-            }
+    fn create_at(&self, path: &Path) -> Result<()> {
+        self.validate()?;
+        let content = serde_json::to_string_pretty(self)?;
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
         }
+        let mut file = options
+            .open(path)
+            .with_context(|| format!("failed to create configuration: {}", path.display()))?;
+        file.write_all(content.as_bytes())
+            .with_context(|| format!("failed to write configuration: {}", path.display()))
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if !(16..=60_000).contains(&self.display.tick_rate) {
+            bail!("display.tick_rate must be between 16 and 60000 milliseconds");
+        }
+        if self.network.entry_ttl < 100 {
+            bail!("network.entry_ttl must be at least 100 milliseconds");
+        }
+        if self.display.top_remote_hosts == 0 || self.display.connection_count == 0 {
+            bail!("display row limits must be greater than zero");
+        }
+        Ok(())
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Default)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum LogLevel {
     DEBUG,
+    #[default]
     INFO,
     WARN,
     ERROR,
 }
 
 impl LogLevel {
-    pub fn allows(&self, level: &LogLevel) -> bool {
-        match self {
-            LogLevel::DEBUG => true,
-            LogLevel::INFO => level != &LogLevel::DEBUG,
-            LogLevel::WARN => level == &LogLevel::WARN || level == &LogLevel::ERROR,
-            LogLevel::ERROR => level == &LogLevel::ERROR,
-        }
-    }
     pub fn to_level_filter(&self) -> tracing::Level {
         match self {
             LogLevel::DEBUG => tracing::Level::DEBUG,
@@ -110,11 +106,18 @@ impl std::fmt::Display for LogLevel {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(default)]
 pub struct LoggingConfig {
     /// Log level.
     pub level: LogLevel,
     /// Log file path.
     pub file_path: Option<String>,
+}
+
+impl Default for LoggingConfig {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LoggingConfig {
@@ -128,13 +131,20 @@ impl LoggingConfig {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(default)]
 pub struct NetworkConfig {
-    /// Network interfaces to use. If empty, all interfaces will be use.
+    /// Network interfaces to use. If empty, all usable interfaces are selected.
     pub interfaces: Vec<String>,
     /// Enable reverse DNS lookup.
     pub reverse_dns: bool,
     /// Entry TTL in milliseconds. If no traffic is seen for this duration, the entry will be removed.
     pub entry_ttl: u64,
+}
+
+impl Default for NetworkConfig {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NetworkConfig {
@@ -148,18 +158,25 @@ impl NetworkConfig {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(default)]
 pub struct DisplayConfig {
     /// The number of top remote hosts to display in the Overview tab.
     pub top_remote_hosts: usize,
     /// The number of connections to display in the Overview tab.
     pub connection_count: usize,
-    /// The tick rate in milliseconds. Default is 1000.
-    /// This is the default rate at which the UI will update.
+    /// Monitor refresh period in milliseconds. Default is 1000.
+    /// Live mode updates on packet arrival, independently of this value.
     pub tick_rate: u64,
     /// Show traffic as total or bandwidth.
     /// true: bandwidth, false: total.
     /// Default is total.
     pub show_bandwidth: bool,
+}
+
+impl Default for DisplayConfig {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DisplayConfig {
@@ -173,19 +190,55 @@ impl DisplayConfig {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct DatabaseConfig {
-    pub oui_db_path: String,
-    pub tcp_service_db_path: String,
-    pub udp_service_db_path: String,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl DatabaseConfig {
-    pub fn new() -> DatabaseConfig {
-        DatabaseConfig {
-            oui_db_path: String::new(),
-            tcp_service_db_path: String::new(),
-            udp_service_db_path: String::new(),
+    #[test]
+    fn missing_json_fields_receive_defaults() {
+        let config: AppConfig = serde_json::from_str(r#"{"network":{"reverse_dns":true}}"#)
+            .expect("partial configuration should deserialize");
+        assert!(config.network.reverse_dns);
+        assert_eq!(config.display.tick_rate, 1_000);
+        assert_eq!(config.network.entry_ttl, 60_000);
+    }
+
+    #[test]
+    fn creating_defaults_never_overwrites_an_existing_configuration() {
+        let path = std::env::temp_dir().join(format!(
+            "ntap-config-test-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let config = AppConfig::default();
+        config.create_at(&path).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+                0o600
+            );
         }
+        std::fs::write(&path, b"preserve user configuration").unwrap();
+        assert!(config.create_at(&path).is_err());
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            b"preserve user configuration"
+        );
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn unsafe_intervals_are_rejected() {
+        let mut config = AppConfig::default();
+        config.display.tick_rate = 0;
+        assert!(config.validate().is_err());
+        config.display.tick_rate = 1_000;
+        config.network.entry_ttl = 0;
+        assert!(config.validate().is_err());
     }
 }
