@@ -1,8 +1,8 @@
 use crate::net::packet::PacketFrame;
 use crate::net::stat::NetStatStorage;
 use nex::net::interface::Interface;
-use nex::packet::frame::Frame;
 use nex::packet::frame::ParseOption;
+use nex::packet::frame::{Frame, FrameSlice};
 use nex::packet::{ethernet::EtherType, ip::IpNextProtocol};
 use std::collections::HashSet;
 use std::net::IpAddr;
@@ -42,6 +42,7 @@ fn datalink_config(options: &PacketCaptureOptions) -> nex::datalink::Config {
     config.read_buffer_size = 256 * 1024;
     config.read_timeout = Some(options.read_timeout);
     config.promiscuous = options.promiscuous;
+    config.linux_suppress_loopback_duplicates = true;
     config
 }
 
@@ -159,14 +160,14 @@ pub fn start_live_capture(
                 from_ip_packet: records_raw_ip(&interface),
                 ..Default::default()
             };
-            let frame: Frame = match Frame::from_buf(packet, parse_option) {
+            let frame: Frame = match Frame::from_buf(packet, parse_option.clone()) {
                 Some(frame) => frame,
                 None => {
                     tracing::debug!("ignored an unsupported or malformed frame");
                     continue;
                 }
             };
-            if filter_packet(&frame, &capture_options) {
+            if filter_captured_packet(&frame, &capture_options, packet, parse_option) {
                 let mut packet_frame =
                     PacketFrame::from_nex_frame(0, interface.index, interface.name.clone(), frame);
                 if capture_options.record {
@@ -249,14 +250,14 @@ pub fn start_background_capture(
                 from_ip_packet: records_raw_ip(&interface),
                 ..Default::default()
             };
-            let frame: Frame = match Frame::from_buf(packet, parse_option) {
+            let frame: Frame = match Frame::from_buf(packet, parse_option.clone()) {
                 Some(frame) => frame,
                 None => {
                     tracing::debug!("ignored an unsupported or malformed frame");
                     continue;
                 }
             };
-            if filter_packet(&frame, &capture_options) {
+            if filter_captured_packet(&frame, &capture_options, packet, parse_option) {
                 let packet_frame =
                     PacketFrame::from_nex_frame(0, interface.index, interface.name.clone(), frame);
                 netstat_storage.update(packet_frame);
@@ -265,8 +266,33 @@ pub fn start_background_capture(
     }
 }
 
+fn filter_captured_packet(
+    frame: &Frame,
+    options: &PacketCaptureOptions,
+    packet: &[u8],
+    parse: ParseOption,
+) -> bool {
+    // Frame retains the base IPv6 next-header value, but not its extension chain.
+    // Recover the final protocol when no decoded transport header is available.
+    let ipv6_protocol = if !options.ip_protocols.is_empty()
+        && frame.ip.as_ref().is_some_and(|ip| ip.ipv6.is_some())
+        && frame.transport.is_none()
+    {
+        FrameSlice::try_from_buf(packet, parse)
+            .ok()
+            .and_then(|view| view.ip_protocol)
+    } else {
+        None
+    };
+    filter_packet(frame, options, ipv6_protocol)
+}
+
 /// Protocol choices form a union; endpoint and port constraints intersect it.
-fn filter_packet(frame: &Frame, options: &PacketCaptureOptions) -> bool {
+fn filter_packet(
+    frame: &Frame,
+    options: &PacketCaptureOptions,
+    ipv6_protocol: Option<IpNextProtocol>,
+) -> bool {
     let ethernet = frame
         .datalink
         .as_ref()
@@ -301,6 +327,7 @@ fn filter_packet(frame: &Frame, options: &PacketCaptureOptions) -> bool {
         Some(IpNextProtocol::Icmpv6)
     } else {
         ipv4.map(|header| header.next_level_protocol)
+            .or(ipv6_protocol)
             .or_else(|| ipv6.map(|header| header.next_header))
     };
     if !(options.ether_types.is_empty() && options.ip_protocols.is_empty()
@@ -370,11 +397,38 @@ mod tests {
     }
 
     #[test]
+    fn ipv6_later_fragments_match_protocol_but_not_port_filters() {
+        let mut packet = vec![0; 56];
+        packet[0] = 0x60;
+        packet[4..6].copy_from_slice(&16u16.to_be_bytes());
+        packet[6] = 44;
+        packet[7] = 64;
+        packet[40] = 17;
+        packet[42..44].copy_from_slice(&8u16.to_be_bytes());
+        let parse = ParseOption {
+            from_ip_packet: true,
+            offset: 0,
+        };
+        let frame = Frame::from_buf(&packet, parse.clone()).unwrap();
+        assert!(frame.transport.is_none());
+        let mut options = PacketCaptureOptions::new();
+        options.ip_protocols.insert(IpNextProtocol::Udp);
+        assert!(filter_captured_packet(
+            &frame,
+            &options,
+            &packet,
+            parse.clone()
+        ));
+        options.dst_ports.insert(53);
+        assert!(!filter_captured_packet(&frame, &options, &packet, parse));
+    }
+
+    #[test]
     fn port_filter_rejects_packets_without_ports() {
         let frame = ipv4(1, &[8, 0, 0, 0, 0, 0, 0, 0], true);
         let mut options = PacketCaptureOptions::new();
         options.dst_ports.insert(443);
-        assert!(!filter_packet(&frame, &options));
+        assert!(!filter_packet(&frame, &options, None));
     }
 
     #[test]
@@ -383,9 +437,9 @@ mod tests {
         let mut options = PacketCaptureOptions::new();
         options.ip_protocols.insert(IpNextProtocol::Tcp);
         options.dst_ports.insert(80);
-        assert!(!filter_packet(&udp, &options));
+        assert!(!filter_packet(&udp, &options, None));
         options.ip_protocols.insert(IpNextProtocol::Udp);
-        assert!(filter_packet(&udp, &options));
+        assert!(filter_packet(&udp, &options, None));
     }
 
     #[test]
@@ -394,7 +448,7 @@ mod tests {
         let mut options = PacketCaptureOptions::new();
         options.ether_types.insert(EtherType::Ipv4);
         options.ip_protocols.insert(IpNextProtocol::Tcp);
-        assert!(filter_packet(&udp, &options));
+        assert!(filter_packet(&udp, &options, None));
     }
 
     #[test]
@@ -402,13 +456,13 @@ mod tests {
         let udp = ipv4(17, &[0, 53, 0, 80, 0, 8, 0, 0], false);
         let mut options = PacketCaptureOptions::new();
         options.ether_types.insert(EtherType::Ipv6);
-        assert!(!filter_packet(&udp, &options));
+        assert!(!filter_packet(&udp, &options, None));
         options.ether_types.insert(EtherType::Ipv4);
         options.dst_ips.insert("198.51.100.2".parse().unwrap());
-        assert!(filter_packet(&udp, &options));
+        assert!(filter_packet(&udp, &options, None));
         options.dst_ips.clear();
         options.src_ips.insert("203.0.113.1".parse().unwrap());
-        assert!(!filter_packet(&udp, &options));
+        assert!(!filter_packet(&udp, &options, None));
     }
 
     #[test]
@@ -421,13 +475,18 @@ mod tests {
             packet_len: 0,
         };
         let mut options = PacketCaptureOptions::new();
-        assert!(filter_packet(&frame, &options));
+        assert!(filter_packet(&frame, &options, None));
         options.src_ips.insert("192.0.2.1".parse().unwrap());
-        assert!(!filter_packet(&frame, &options));
+        assert!(!filter_packet(&frame, &options, None));
         options.src_ips.clear();
         options.ip_protocols.insert(IpNextProtocol::Tcp);
-        assert!(!filter_packet(&frame, &options));
+        assert!(!filter_packet(&frame, &options, None));
     }
+    #[test]
+    fn capture_configuration_suppresses_linux_loopback_duplicates() {
+        assert!(datalink_config(&PacketCaptureOptions::new()).linux_suppress_loopback_duplicates);
+    }
+
     #[test]
     fn receive_buffer_preserves_large_datagrams() {
         let config = datalink_config(&PacketCaptureOptions::new());
@@ -470,5 +529,85 @@ mod tests {
         interface.flags = 0;
         assert_eq!(capture_interface(&interface).name, interface.name);
         assert!(!records_raw_ip(&interface));
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod linux_integration_tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "requires an isolated Linux loopback with CAP_NET_RAW"]
+    fn monitor_loopback_real_packets_are_counted_once() {
+        let interface = nex::net::interface::get_interfaces()
+            .into_iter()
+            .find(|iface| iface.is_loopback())
+            .unwrap();
+        let socket = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+        socket
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .unwrap();
+        let sender = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+        let mut options = PacketCaptureOptions::new();
+        options.ip_protocols.insert(IpNextProtocol::Udp);
+        options
+            .dst_ports
+            .insert(socket.local_addr().unwrap().port());
+        assert!(datalink_config(&options).linux_suppress_loopback_duplicates);
+        let storage = Arc::new(NetStatStorage::new());
+        let mut worker_storage = Arc::clone(&storage);
+        let stop = Arc::new(AtomicBool::new(false));
+        let worker_stop = Arc::clone(&stop);
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            start_background_capture(
+                options,
+                &mut worker_storage,
+                interface,
+                &worker_stop,
+                ready_tx,
+            );
+        });
+        ready_rx
+            .recv_timeout(Duration::from_secs(3))
+            .unwrap()
+            .unwrap();
+        for _ in 0..5 {
+            sender
+                .send_to(b"ntap-loopback-test", socket.local_addr().unwrap())
+                .unwrap();
+            let mut bytes = [0; 100];
+            let n = socket.recv(&mut bytes).unwrap();
+            assert_eq!(&bytes[..n], b"ntap-loopback-test");
+        }
+        let deadline = std::time::Instant::now() + Duration::from_secs(3);
+        while storage.traffic.lock().unwrap().packet_sent < 5
+            && std::time::Instant::now() < deadline
+        {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        // Observe beyond the last send to include any queued duplicate copies.
+        std::thread::sleep(Duration::from_millis(200));
+        stop.store(true, Ordering::Release);
+        worker.join().unwrap();
+        let data = storage.take_data();
+        assert_eq!(data.traffic.packet_sent, 5);
+        assert_eq!(data.traffic.packet_received, 0);
+        assert_eq!(
+            data.traffic.bytes_sent,
+            5 * (14 + 20 + 8 + b"ntap-loopback-test".len())
+        );
+        assert_eq!(data.remote_hosts.len(), 1);
+        assert_eq!(data.connection_map.len(), 1);
+        assert_eq!(data.connection_map.values().next().unwrap().packet_sent, 5);
+        assert_eq!(
+            data.remote_hosts
+                .values()
+                .next()
+                .unwrap()
+                .traffic_info
+                .packet_sent,
+            5
+        );
     }
 }
