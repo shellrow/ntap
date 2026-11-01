@@ -12,8 +12,8 @@ ntap is a terminal network traffic monitor and packet capture tool for Linux, ma
 ntap [OPTIONS] [COMMAND]
 
 Commands:
-  monitor      Start the traffic monitor (default)
-  live         Inspect captured packets
+  monitor     Start the traffic monitor (default)
+  live        Inspect captured packets
   interfaces  List available interfaces
   interface   Show the default interface
 ```
@@ -28,7 +28,9 @@ Global capture filters may be placed before or after a subcommand:
 -r, --tickrate <duration_ms>   Monitor refresh period from 16 through 60000 ms
 ```
 
-Supported protocol names are `arp`, `rarp`, `aarp`, `ipv4`, `ipv6`, `vlan`, `mpls`, `wakeonlan`, `rldp`, `lldp`, `icmp`, `icmpv6`, `tcp`, and `udp`. Protocol names are case-insensitive. Unknown values and unavailable interfaces are rejected at startup. For example, `-P arp,tcp` captures ARP or TCP packets. IP and port filters further restrict the capture. Port filters require a TCP or UDP header and exclude non-initial IP fragments.
+Supported protocol names are `arp`, `rarp`, `aarp`, `ipv4`, `ipv6`, `vlan`, `mpls`, `wakeonlan`, `rldp`, `lldp`, `icmp`, `icmpv6`, `tcp`, and `udp`. Protocol names are case-insensitive. Unknown values and unavailable interfaces are rejected at startup. For example, `-P arp,tcp` captures ARP or TCP packets. IP and port filters further restrict the capture. Port filters require a decoded TCP or UDP header. They exclude non-initial IP fragments and may exclude truncated or fragmented UDP datagrams. IP fragments and TCP streams are not reassembled.
+
+VLAN and MPLS frames can be selected by EtherType, but their encapsulated IP headers are not decoded. IP, transport-protocol, and port filters therefore exclude those frames; Monitor mode does not account for their inner traffic.
 
 Live mode updates on packet arrival, with rendering limited to 60 frames per second. Multiple arrivals between frames are displayed together. `--tickrate` and `display.tick_rate` apply only to Monitor mode.
 
@@ -84,7 +86,7 @@ Live mode:
 Install from crates.io:
 
 ```sh
-cargo install ntap
+cargo install ntap --locked
 ```
 
 Install a prebuilt release on Linux or macOS:
@@ -105,7 +107,7 @@ Build from source with Rust 1.94 or newer:
 ```sh
 git clone https://github.com/shellrow/ntap
 cd ntap
-cargo build --release
+cargo build --release --locked
 ./target/release/ntap
 ```
 
@@ -160,7 +162,7 @@ ntap creates `~/.ntap/ntap-config.json` on the first monitor or live run. Missin
 }
 ```
 
-Logs are appended to the configured file and filtered by `DEBUG`, `INFO`, `WARN`, or `ERROR`. Reverse DNS is disabled by default to avoid extra network queries; enable it explicitly when hostnames are useful.
+New configuration and log files use owner-only permissions on Unix; existing file permissions are preserved. Logs are appended to the configured file and filtered by `DEBUG`, `INFO`, `WARN`, or `ERROR`. Reverse DNS is disabled by default to avoid extra network queries; enable it explicitly when hostnames are useful.
 
 ## Troubleshooting
 
@@ -175,13 +177,13 @@ Logs are appended to the configured file and filtered by `DEBUG`, `INFO`, `WARN`
 
 Monitor totals cover observed local IP traffic. Host and connection lists each hold up to 16,384 entries; totals continue to accumulate when these limits are reached. Inactive entries expire after `entry_ttl` milliseconds. Pausing freezes the display while traffic totals continue to accumulate.
 
-Capturing on overlapping physical and tunnel interfaces can count the same traffic more than once. Select specific interfaces when comparing totals with another tool.
+Capturing on overlapping physical and tunnel interfaces can count the same traffic more than once. On Linux, outgoing loopback copies are suppressed so each packet is counted and recorded once. Traffic whose source and destination are both local is classified as egress. Select specific interfaces when comparing network totals with another tool.
 
 Process names come from periodic OS socket snapshots. Short-lived connections, reused ports, shared sockets, and insufficient privileges can cause missing or ambiguous process information. DNS names are cached and may become stale during long sessions.
 
 ## Privacy and Security
 
-Live mode displays packet payload previews, which may contain credentials, tokens, personal data, or other sensitive content. Capture only networks and systems you are authorized to inspect. Log files contain operational errors and may include interface names and remote addresses; protect them according to your environment's retention policy.
+Live mode displays packet payload previews, and PCAPNG files retain full captured packets. Both may contain credentials, tokens, personal data, or other sensitive content. Capture only networks and systems you are authorized to inspect. Log files contain operational errors and may include interface names and remote addresses; protect them according to your environment's retention policy.
 
 ## Development
 
@@ -189,13 +191,11 @@ Run the checks:
 
 ```sh
 cargo fmt --all -- --check
-cargo check --all-targets
-cargo test --all-targets
-cargo clippy --all-targets -- -D warnings
+cargo check --locked --all-targets
+cargo test --locked --all-targets
+cargo clippy --locked --all-targets -- -D warnings
 cargo audit
 ```
-
-CI runs formatting, Clippy, and tests on Linux, macOS, and Windows.
 
 ## License
 
