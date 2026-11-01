@@ -737,6 +737,91 @@ mod tests {
         assert_eq!(data.connection_map.len(), 1);
     }
     #[test]
+    fn concurrent_snapshots_preserve_packet_and_detail_totals() {
+        let storage = Arc::new(NetStatStorage::new());
+        storage
+            .local_ip_map
+            .lock()
+            .unwrap()
+            .insert("192.0.2.1".parse().unwrap(), "test".into());
+        let mut packet = vec![0; 28];
+        packet[0] = 0x45;
+        packet[3] = 28;
+        packet[8] = 64;
+        packet[9] = 17;
+        packet[12..16].copy_from_slice(&[192, 0, 2, 1]);
+        packet[16..20].copy_from_slice(&[198, 51, 100, 1]);
+        packet[24..26].copy_from_slice(&8u16.to_be_bytes());
+        let frame = nex::packet::frame::Frame::from_buf(
+            &packet,
+            nex::packet::frame::ParseOption {
+                from_ip_packet: true,
+                offset: 0,
+            },
+        )
+        .unwrap();
+        let frame = PacketFrame::from_nex_frame(0, 1, "test".into(), frame);
+        let mut workers = Vec::new();
+        for _ in 0..4 {
+            let storage = Arc::clone(&storage);
+            let frame = frame.clone();
+            workers.push(std::thread::spawn(move || {
+                for _ in 0..1000 {
+                    storage.update(frame.clone());
+                }
+            }));
+        }
+        let mut total = 0;
+        let mut collect = || {
+            let data = storage.take_data();
+            let hosts: usize = data
+                .remote_hosts
+                .values()
+                .map(|host| host.traffic_info.packet_sent)
+                .sum();
+            let connections: usize = data
+                .connection_map
+                .values()
+                .map(|traffic| traffic.packet_sent)
+                .sum();
+            assert_eq!(data.traffic.packet_sent, hosts);
+            assert_eq!(data.traffic.packet_sent, connections);
+            assert_eq!(data.traffic.bytes_sent, data.traffic.packet_sent * 28);
+            total += data.traffic.packet_sent;
+        };
+        while workers.iter().any(|worker| !worker.is_finished()) {
+            collect();
+            std::thread::yield_now();
+        }
+        for worker in workers {
+            worker.join().unwrap();
+        }
+        collect();
+        assert_eq!(total, 4000);
+    }
+
+    #[test]
+    fn connection_cardinality_limit_still_updates_existing_entries() {
+        let mut map = HashMap::new();
+        let key = SocketConnection {
+            interface_name: "test".into(),
+            local_ip_addr: "192.0.2.1".parse().unwrap(),
+            local_port: 1,
+            remote_ip_addr: "198.51.100.1".parse().unwrap(),
+            remote_port: 0,
+            protocol: TransportProtocol::UDP,
+        };
+        for port in 0..=MAX_TRACKED_ENTRIES {
+            let mut connection = key.clone();
+            connection.remote_port = port as u16;
+            record_connection(&mut map, connection, Direction::Egress, 28);
+        }
+        assert_eq!(map.len(), MAX_TRACKED_ENTRIES);
+        record_connection(&mut map, key.clone(), Direction::Egress, 28);
+        assert_eq!(map[&key].packet_sent, 2);
+    }
+
+    #[test]
     fn wildcard_sockets_resolve_without_conflating_address_families() {
         let mut data = NetStatData::new();
         data.local_socket_map.insert(
