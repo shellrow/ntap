@@ -1,7 +1,8 @@
 use crate::sys;
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Write};
+use std::path::Path;
 
 pub const NTAP_CONFIG_FILE_NAME: &str = "ntap-config.json";
 pub const DEFAULT_LOG_FILE_PATH: &str = "ntap.log";
@@ -33,19 +34,27 @@ impl AppConfig {
             }
             Err(error) if error.kind() == ErrorKind::NotFound => {
                 let config = AppConfig::new();
-                config.save()?;
+                config.create_at(&path)?;
                 Ok(config)
             }
             Err(error) => Err(error)
                 .with_context(|| format!("failed to read configuration: {}", path.display())),
         }
     }
-    pub fn save(&self) -> Result<()> {
+    fn create_at(&self, path: &Path) -> Result<()> {
         self.validate()?;
-        let path = sys::get_user_file_path(NTAP_CONFIG_FILE_NAME)
-            .context("could not resolve the ntap configuration path")?;
         let content = serde_json::to_string_pretty(self)?;
-        std::fs::write(&path, content)
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options
+            .open(path)
+            .with_context(|| format!("failed to create configuration: {}", path.display()))?;
+        file.write_all(content.as_bytes())
             .with_context(|| format!("failed to write configuration: {}", path.display()))
     }
 
@@ -124,7 +133,7 @@ impl LoggingConfig {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct NetworkConfig {
-    /// Network interfaces to use. If empty, all interfaces will be use.
+    /// Network interfaces to use. If empty, all usable interfaces are selected.
     pub interfaces: Vec<String>,
     /// Enable reverse DNS lookup.
     pub reverse_dns: bool,
@@ -192,6 +201,35 @@ mod tests {
         assert!(config.network.reverse_dns);
         assert_eq!(config.display.tick_rate, 1_000);
         assert_eq!(config.network.entry_ttl, 60_000);
+    }
+
+    #[test]
+    fn creating_defaults_never_overwrites_an_existing_configuration() {
+        let path = std::env::temp_dir().join(format!(
+            "ntap-config-test-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let config = AppConfig::default();
+        config.create_at(&path).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+                0o600
+            );
+        }
+        std::fs::write(&path, b"preserve user configuration").unwrap();
+        assert!(config.create_at(&path).is_err());
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            b"preserve user configuration"
+        );
+        std::fs::remove_file(path).unwrap();
     }
 
     #[test]
