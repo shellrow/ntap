@@ -148,8 +148,9 @@ fn is_tls_client_hello(payload: &[u8]) -> bool {
 }
 
 fn first_http_line(payload: &[u8]) -> Option<String> {
-    let s = std::str::from_utf8(payload).ok()?;
-    let first = s.lines().next()?.trim();
+    let first = std::str::from_utf8(payload.split(|byte| *byte == b'\n').next()?)
+        .ok()?
+        .trim();
     if first.starts_with("GET ")
         || first.starts_with("POST ")
         || first.starts_with("PUT ")
@@ -166,10 +167,16 @@ fn first_http_line(payload: &[u8]) -> Option<String> {
 }
 
 fn http_host(payload: &[u8]) -> Option<String> {
-    let s = std::str::from_utf8(payload).ok()?;
-    for line in s.lines() {
-        if let Some(rest) = line.strip_prefix("Host:") {
-            return Some(rest.trim().to_string());
+    for line in payload.split(|byte| *byte == b'\n').skip(1) {
+        let line = line.strip_suffix(b"\r").unwrap_or(line);
+        if line.is_empty() {
+            break;
+        }
+        let line = std::str::from_utf8(line).ok()?;
+        if let Some((name, value)) = line.split_once(':')
+            && name.eq_ignore_ascii_case("host")
+        {
+            return Some(value.trim().to_string());
         }
     }
     None
@@ -291,7 +298,6 @@ fn draw_packet_table(f: &mut Frame, app: &mut App, area: Rect) {
         )
     };
 
-    //let mut table_state = TableState::default();
     let table = Table::new(rows, widths)
         .column_spacing(1)
         .header(
@@ -304,13 +310,12 @@ fn draw_packet_table(f: &mut Frame, app: &mut App, area: Rect) {
                 "Len",
                 "Info",
             ])
-            .style(Style::new().bold()), //.bottom_margin(1),
+            .style(Style::new().bold()),
         )
         .block(Block::default().borders(Borders::ALL).title(table_title))
         .row_highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
 
-    //f.render_widget(table, area);
     f.render_stateful_widget(table, area, &mut app.table_state);
 }
 
@@ -437,6 +442,14 @@ mod tests {
         let res = b"HTTP/1.1 200 OK\r\nServer: test\r\n\r\n";
         assert_eq!(first_http_line(res).as_deref(), Some("HTTP/1.1 200 OK"));
         assert_eq!(http_host(res), None);
+    }
+
+    #[test]
+    fn http_headers_ignore_binary_bodies_and_body_header_lookalikes() {
+        let request = b"POST / HTTP/1.1\r\nhost: example.com\r\n\r\n\xff";
+        assert_eq!(first_http_line(request).as_deref(), Some("POST / HTTP/1.1"));
+        assert_eq!(http_host(request).as_deref(), Some("example.com"));
+        assert_eq!(http_host(b"HTTP/1.1 200 OK\r\n\r\nHost: body text"), None);
     }
 
     #[test]
